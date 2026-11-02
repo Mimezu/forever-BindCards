@@ -225,17 +225,22 @@ function BindCards:RegisterHoverFrame(frame)
     return true
 end
 
+-- Global names of Blizzard's unit frames, built once (the discovery runs on
+-- every binding apply).
+local BLIZZARD_FRAME_NAMES = { "PlayerFrame", "PetFrame", "TargetFrame", "TargetFrameToT", "FocusFrame", "FocusFrameToT" }
+for index = 1, 5 do
+    BLIZZARD_FRAME_NAMES[#BLIZZARD_FRAME_NAMES + 1] = "CompactPartyFrameMember" .. index
+    BLIZZARD_FRAME_NAMES[#BLIZZARD_FRAME_NAMES + 1] = "CompactPartyFramePet" .. index
+end
+for group = 1, 8 do
+    for member = 1, 5 do
+        BLIZZARD_FRAME_NAMES[#BLIZZARD_FRAME_NAMES + 1] = "CompactRaidGroup" .. group .. "Member" .. member
+    end
+end
+for index = 1, 80 do BLIZZARD_FRAME_NAMES[#BLIZZARD_FRAME_NAMES + 1] = "CompactRaidFrame" .. index end
+
 local function DiscoverBlizzardFrames()
-    local names = { "PlayerFrame", "PetFrame", "TargetFrame", "TargetFrameToT", "FocusFrame", "FocusFrameToT" }
-    for index = 1, 5 do
-        names[#names + 1] = "CompactPartyFrameMember" .. index
-        names[#names + 1] = "CompactPartyFramePet" .. index
-    end
-    for group = 1, 8 do
-        for member = 1, 5 do names[#names + 1] = "CompactRaidGroup" .. group .. "Member" .. member end
-    end
-    for index = 1, 80 do names[#names + 1] = "CompactRaidFrame" .. index end
-    for _, name in ipairs(names) do
+    for _, name in ipairs(BLIZZARD_FRAME_NAMES) do
         local frame = rawget(_G, name)
         if frame then BindCards:RegisterHoverFrame(frame) end
     end

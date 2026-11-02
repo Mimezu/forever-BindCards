@@ -1,3 +1,10 @@
+# 0.4.43
+
+- Live client (1.60.1.70707) review. Racial detection checked against the launch racials: no active racial was added, removed or renamed since the beta list, so new characters on live get the same two racials per race. The Skyborne leyline racial is also matched under its "Read Leyline" spelling.
+- Fix a racial that carries a rank label (e.g. "Rank 1") teaching that label as "racial", which would have added every rank-1 class spell to the character card.
+- Mouseover: the list of Blizzard unit frame names is built once instead of on every binding apply.
+- README: live install path and client build.
+
 # 0.4.42
 
 - Build 70338: the PvP condition also recompiles on the new `PLAYER_PVP_FLAG_CHANGED` event (Blizzard's player frame now uses it instead of `PLAYER_FLAGS_CHANGED`).

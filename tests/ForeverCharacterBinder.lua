@@ -144,6 +144,11 @@ book[1].subName, book[2].subName = 'Raciale', 'Raciale'
 local ids = addon:GetRacialSpellIDs()
 table.sort(ids)
 assert(table.concat(ids, ',') == '20600,59752', 'a translated "Racial" label is learned from a known racial')
+-- A rank label on a known racial is never learned: Holy Light (Rank 1) stays out.
+book[1].subName = 'Rank 1'
+ids = addon:GetRacialSpellIDs()
+table.sort(ids)
+assert(table.concat(ids, ',') == '20600,59752', 'a rank label is not learned as a racial label: ' .. table.concat(ids, ','))
 book[1].subName, book[2].subName = 'Racial', 'Racial'
 -- Existing card missing one (seeded by an older version): the menu action adds it.
 for index, tile in ipairs(Root(neige).tiles) do
@@ -173,6 +178,11 @@ UnitRace = function() return 'Skyborne', 'Skyborne', 99 end
 ids = addon:GetRacialSpellIDs()
 table.sort(ids)
 assert(table.concat(ids, ',') == '1400001,1400002', 'Alliance Skyborne: Walk on Air and Read Ley Line only')
+-- The launch client spells it "Read Leyline" in some data; both spellings count.
+book[2] = { name = 'Read Leyline', spellID = 1400005, isPassive = false, itemType = 1, subName = '' }
+ids = addon:GetRacialSpellIDs()
+table.sort(ids)
+assert(table.concat(ids, ',') == '1400001,1400005', 'Alliance Skyborne: "Read Leyline" spelling')
 book[2] = { name = 'Skysight', spellID = 1400004, isPassive = false, itemType = 1, subName = '' }
 ids = addon:GetRacialSpellIDs()
 table.sort(ids)

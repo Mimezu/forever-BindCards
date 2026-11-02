@@ -2495,8 +2495,11 @@ local RACIAL_FALLBACK = {
 }
 
 -- Active racial names on Forever (English), including Forever-only ones.
--- Source: Wowhead "All Racials and Available Class-Race Combinations in
--- World of Warcraft: Forever" (updated 2026-09-25; pre-release, may change).
+-- Checked 2026-11-02 against the launch client data (1.60.1.70707, tooltips
+-- of 2026-10-31) and the Wowhead/Warcraft Tavern racial guides: every race
+-- has two active racials; the October tuning passes changed numbers and
+-- passives only, no active racial was added, removed or renamed. The
+-- Skyborne leyline racial is spelled both ways across sources.
 -- Matched by name against active spellbook spells, so it adds only racials
 -- the character really has.
 local FOREVER_RACIAL_NAMES = {
@@ -2508,7 +2511,8 @@ local FOREVER_RACIAL_NAMES = {
     ["will of the forsaken"] = true, ["cannibalize"] = true,          -- Undead
     ["war stomp"] = true, ["cultivation"] = true,                     -- Tauren
     ["berserking"] = true, ["rapid regeneration"] = true,             -- Troll
-    ["walk on air"] = true, ["read ley line"] = true, ["skysight"] = true, -- Skyborne
+    ["walk on air"] = true, ["read ley line"] = true, ["read leyline"] = true, -- Skyborne
+    ["skysight"] = true,
 }
 
 local function Plain(value)
@@ -2549,7 +2553,7 @@ local function SpellbookActiveSpells()
     return spells, list
 end
 
--- Spell IDs of the current character's active racial abilities, from three
+-- Spell IDs of the current character's active racial abilities, from four
 -- sources that can only add, never hide one another:
 --   1. the spellbook's own "Racial" label on active spells (it also shows
 --      Forever-only racials such as Human Will to Survive);
@@ -2578,9 +2582,13 @@ function BindCards:GetRacialSpellIDs()
     for _, item in ipairs(list) do
         if FOREVER_RACIAL_NAMES[item.name:lower()] then Add(item.spellID) end
     end
+    -- A rank label ("Rank 1") must never be learned: it would add every
+    -- rank-1 class spell to the card.
     local labels = { racial = true }
     for _, item in ipairs(list) do
-        if seen[item.spellID] and item.subName ~= "" then labels[item.subName:lower()] = true end
+        if seen[item.spellID] and item.subName ~= "" and not item.subName:find("%d") then
+            labels[item.subName:lower()] = true
+        end
     end
     for _, item in ipairs(list) do
         if labels[item.subName:lower()] then Add(item.spellID) end

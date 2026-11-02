@@ -132,11 +132,11 @@ Keyboard and mouse bindings continue to work normally.
 
 ## Installation
 
-Place the BindCards folder under `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+Place the BindCards folder under `World of Warcraft/_forever_/Interface/AddOns/`.
 The TOC must be at `Interface/AddOns/BindCards/BindCards.toc`.
 
 Commands: `/bc`, `/bindcards`, `/bc rebind`, `/bc hover` (mouseover diagnostics), `/bc testframes` (stand-in unit frames), `/bc help`.
 
-## Beta build
+## Client build
 
-Targets Forever 1.60.1.69893, Interface 16001. This is an experimental port; live casting, dual-build changes and combat taint require in-game verification. See PORT-VALIDATION.md for checks.
+Targets WoW Forever 1.60.1 (live client 70707), Interface 16001. Live casting, dual-build changes and combat taint still need in-game verification after each client update. See PORT-VALIDATION.md for checks.
