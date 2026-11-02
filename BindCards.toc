@@ -1,0 +1,23 @@
+## Interface: 16001
+## Title: BindCards
+## Notes: Visual conditional keymapping without action bars.
+## Author: Mimezu
+## Version: 0.4.42
+## X-BindCards-Client: Forever
+## SavedVariables: BindCardsDB, BindCardsDBBackup, BindCardsGamepadStorage
+## LoadSavedVariablesFirst: 1
+# Settings load through native SavedVariables.
+## IconTexture: Interface\AddOns\BindCards\Assets\BindCardsIcon
+## Category: Mimezu's Suite
+## Group: Mimezu_Controls
+
+Core.lua
+Conditions.lua
+Bindings.lua
+HoverCast.lua
+GamepadBindings.lua
+Serialization.lua
+UIHelpers.lua
+EUIFacade.lua
+LegacySkin.lua
+UI.lua
