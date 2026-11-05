@@ -108,7 +108,7 @@ print('PASS: collapsed-spellbook drops follow ranks; all-ranks, low-rank and unr
 -- known; an exact tile of an unlearned rank stays dim.
 local uiSource = read(root .. '/UI.lua')
 local dimFrom = assert(uiSource:find('local function EntrySpellUnavailable(entry)', 1, true))
-local dimTo = assert(uiSource:find('local ROLE_ATLASES', dimFrom, true))
+local dimTo = assert(uiSource:find('local function ApplyCardIcon', dimFrom, true))
 local known = { [20154] = true } -- Seal of Righteousness Rank 1 only
 IsPlayerSpell = function(id) return known[id] == true end
 IsSpellKnown = IsPlayerSpell

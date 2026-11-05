@@ -207,7 +207,7 @@ local docking = section('                view:SetParent(self.workspaceContent);'
 -- The extracted block ends with the surrounding floating/docked branch's end.
 local dock = assert(compile([[local self, view = ...
 local viewWidth, height, pageX, frontPageOffsetY = 409, 300, 45, 0
-local pageHeight, experimentalCardSizing = 1, false
+local pageHeight = 1
 local max = math.max
 if true then
 ]] .. docking))

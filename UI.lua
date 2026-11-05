@@ -439,18 +439,12 @@ local function IsFixedCard(card)
         templateKey:match("^default:specgroup:") ~= nil)
 end
 
-local function ExperimentalColorPass()
-    return true
-end
-
 local function IsAmberNestedCard(card)
-    return ExperimentalColorPass() and
-        (ParentID(card) ~= nil or card and card.homeParentId ~= nil) and
+    return (ParentID(card) ~= nil or card and card.homeParentId ~= nil) and
         not IsStandardCard(card)
 end
 
-local function ExperimentalCardSurface(base, card, amount)
-    if not ExperimentalColorPass() then return base end
+local function CardSurface(base, card, amount)
     local red, green, blue
     if IsAmberNestedCard(card) then
         red, green, blue = C.amber[1], C.amber[2], C.amber[3]
@@ -521,7 +515,6 @@ local function BinderFamily(card)
 end
 
 local FRIENDLY = {
-    DAMAGER = "Damage", HEALER = "Healer", TANK = "Tank",
     DEATHKNIGHT = "Death Knight", DEMONHUNTER = "Demon Hunter",
     PVE = "PvE", PVP = "PvP", ANY = "Any",
 }
@@ -1897,29 +1890,11 @@ local function EntrySpellUnavailable(entry)
     return checked and not known
 end
 
-local ROLE_ATLASES = {
-    TANK = "roleicon-tiny-tank",
-    HEALER = "roleicon-tiny-healer",
-    DAMAGER = "roleicon-tiny-dps",
-}
-
 local function ApplyCardIcon(texture, card)
     texture:Hide()
     texture:SetTexture(nil)
     local condition = card and card.condition or {}
-    local specID = tonumber(condition.specID)
-    if specID and GetSpecializationInfoByID then
-        local icon = select(4, GetSpecializationInfoByID(specID))
-        if issecretvalue and issecretvalue(icon) then icon = nil end
-        if icon then
-            texture:SetTexture(icon)
-            texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-            texture:Show()
-            return
-        end
-    end
-    local atlas = ROLE_ATLASES[condition.role]
-    if not atlas and type(condition.class) == "string" then atlas = "classicon-" .. condition.class:lower() end
+    local atlas = type(condition.class) == "string" and ("classicon-" .. condition.class:lower()) or nil
     if atlas and texture.SetAtlas and pcall(texture.SetAtlas, texture, atlas, false) then
         texture:SetTexCoord(0, 1, 0, 1)
         texture:Show()
@@ -3246,22 +3221,18 @@ function UI:RefreshConditions(card)
     self.inherited:SetShown(parent ~= nil)
     if parent then self.inherited:SetText("Inherits  " .. CardName(parent)) end
     local values = {
-        role = conditions.role or "Any role",
         class = conditions.class or "Any class",
         spec = conditions.specGroup == 1 and "Primary" or conditions.specGroup == 2 and "Secondary" or "Any build",
         content = conditions.content or "Any content",
         form = conditions.form or "Any form",
-        activity = conditions.activity or "Any activity",
     }
     local binderId = Call("GetCardBinderId", card)
     local binderClass = type(binderId) == "string" and binderId:match("^class:(.+)$") or nil
     local formOptions = Call("GetFormOptions", binderClass) or {}
     local supportsFormCondition = (ParentID(card) ~= nil or card.homeParentId ~= nil) and #formOptions > 0
-    local supportsActivityCondition = false
     local visibleControls = {}
     for _, key in ipairs(self.conditionControlOrder or {}) do
-        if key ~= "role" and (key ~= "form" or supportsFormCondition) and
-            (key ~= "activity" or supportsActivityCondition) then visibleControls[#visibleControls + 1] = key end
+        if key ~= "form" or supportsFormCondition then visibleControls[#visibleControls + 1] = key end
     end
     local spacing, height = #visibleControls >= 6 and 36 or 43, #visibleControls >= 6 and 31 or 36
     for index, key in ipairs(visibleControls) do
@@ -3269,15 +3240,12 @@ function UI:RefreshConditions(card)
         control:ClearAllPoints(); control:SetPoint("TOPLEFT", 9, -35 - (index - 1) * spacing)
         control:SetPoint("RIGHT", -9, 0); control:SetHeight(height); control:Show()
     end
-    if self.conditionControls.role then self.conditionControls.role:Hide() end
     if self.conditionControls.form and not supportsFormCondition then self.conditionControls.form:Hide() end
-    if self.conditionControls.activity and not supportsActivityCondition then self.conditionControls.activity:Hide() end
     for key, control in pairs(self.conditionControls) do
         local display = Friendly(values[key], tostring(values[key]))
         if key == "form" and conditions.form and BindCards.FORM_DEFINITIONS then
             display = BindCards.FORM_DEFINITIONS[conditions.form] and BindCards.FORM_DEFINITIONS[conditions.form].label or display
         end
-        if key == "activity" and conditions.activity == "SKYRIDING" then display = "Skyriding" end
         control.value:SetText(display)
         control.current = values[key]
         control:SetEnabled(canEditRules)
@@ -3286,65 +3254,20 @@ function UI:RefreshConditions(card)
     if self.deleteCardButton then self.deleteCardButton:SetShown(not IsStandardCard(card)) end
 end
 
-function UI:CycleCondition(key)
-    local card = self:GetSelectedCard()
-    if not card then return end
-    if IsFixedCard(card) then
-        self:SetStatus("Default card rules are fixed.", "warning")
-        return
-    end
-    local options = self.conditionOptions[key]
-    if key == "form" then
-        options = { "Any form" }
-        local binderId = Call("GetCardBinderId", card)
-        local binderClass = type(binderId) == "string" and binderId:match("^class:(.+)$") or nil
-        for _, option in ipairs(Call("GetFormOptions", binderClass) or {}) do options[#options + 1] = option.id end
-    elseif key == "activity" then
-        options = { "Any activity" }
-    end
-    local control = self.conditionControls[key]
-    local current, nextValue = tostring(control.current or "")
-    for i, value in ipairs(options) do
-        if tostring(value) == current then nextValue = options[(i % #options) + 1] break end
-    end
-    nextValue = nextValue or options[1]
-    Mutate("Condition updated", function()
-        local conditions = {}
-        for name, widget in pairs(self.conditionControls) do conditions[name] = widget.current end
-        conditions[key] = nextValue
-        local specValue = conditions.spec
-        local specGroup = specValue == "Primary" and 1 or specValue == "Secondary" and 2 or nil
-        local canonical = {
-            class = conditions.class == "Any class" and nil or conditions.class,
-            specGroup = specGroup,
-            content = conditions.content == "Any content" and nil or conditions.content,
-            form = conditions.form == "Any form" and nil or conditions.form,
-        }
-        local values = { condition = canonical }
-        if key == "activity" and not canonical.activity then values.overrideAllBindingsWhenActive = false end
-        return Call("UpdateCard", CardID(card), values) ~= false
-    end)
-end
-
 function UI:SetConditionValue(card, key, value)
     if IsFixedCard(card) then
         self:SetStatus("Default card rules are fixed.", "warning")
         return false
     end
     local condition = BindCards.CopyTable and BindCards.CopyTable(card.condition or {}) or {}
-    if key == "role" then condition.role = value == "Any role" and nil or value
-    elseif key == "class" then condition.class = value == "Any class" and nil or value
-    elseif key == "content" then condition.content = value == "Any content" and nil or value
+    if key == "class" then condition.class = value ~= "Any class" and value or nil
+    elseif key == "content" then condition.content = value ~= "Any content" and value or nil
     elseif key == "spec" then
-        condition.specID = nil
         condition.specGroup = value == "Primary" and 1 or value == "Secondary" and 2 or nil
-    elseif key == "form" then condition.form = value == "Any form" and nil or value
-    elseif key == "activity" then condition.activity = value == "Any activity" and nil or value
+    elseif key == "form" then condition.form = value ~= "Any form" and value or nil
     end
     return Mutate("Condition updated", function()
-        local values = { condition = condition }
-        if key == "activity" and not condition.activity then values.overrideAllBindingsWhenActive = false end
-        return Call("UpdateCard", CardID(card), values) ~= false
+        return Call("UpdateCard", CardID(card), { condition = condition }) ~= false
     end)
 end
 
@@ -3359,36 +3282,26 @@ function UI:ShowConditionMenu(owner, card, key)
         local binderId = Call("GetCardBinderId", card)
         local binderClass = type(binderId) == "string" and binderId:match("^class:(.+)$") or nil
         for _, option in ipairs(Call("GetFormOptions", binderClass) or {}) do options[#options + 1] = option.id end
-    elseif key == "activity" then
-        options = { "Any activity" }
     end
-    if not MenuUtil or not MenuUtil.CreateContextMenu or not options then
-        self.selectedCardID = CardID(card); self:RefreshConditions(card); self:CycleCondition(key); return
-    end
-    MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle(({ role = "Role", class = "Class", spec = "Build", content = "Content",
-            form = "Form", activity = "Activity" })[key])
+    if not options then return end
+    self:ShowMenu(owner, function(root)
+        root:CreateTitle(({ class = "Class", spec = "Build", content = "Content", form = "Form" })[key])
         local condition = card.condition or {}
-        local hasCondition = (key == "role" and condition.role ~= nil) or
-            (key == "class" and condition.class ~= nil) or
+        local hasCondition = (key == "class" and condition.class ~= nil) or
             (key == "spec" and condition.specGroup ~= nil) or
             (key == "content" and condition.content ~= nil and condition.content ~= "ANY") or
-            (key == "form" and condition.form ~= nil) or
-            (key == "activity" and condition.activity ~= nil)
+            (key == "form" and condition.form ~= nil)
         if hasCondition then
-            local removeValue = ({
-                role = "Any role", class = "Any class", spec = "Any build",
-                content = "Any content", form = "Any form", activity = "Any activity",
-            })[key]
-            root:CreateButton("Remove condition", function() UI:SetConditionValue(card, key, removeValue) end)
-            if root.CreateDivider then root:CreateDivider() end
+            -- options[1] is the "Any ..." value that clears the rule.
+            root:CreateButton("Remove condition", function() UI:SetConditionValue(card, key, options[1]) end)
+            root:CreateDivider()
         end
         for index, value in ipairs(options) do
             if index > 1 then
                 local selected = value
                 local label = key == "form" and BindCards.FORM_DEFINITIONS and
                     BindCards.FORM_DEFINITIONS[value] and BindCards.FORM_DEFINITIONS[value].label or
-                    (key == "activity" and value == "SKYRIDING" and "Skyriding" or Friendly(value, value))
+                    Friendly(value, value)
                 root:CreateButton(label, function() UI:SetConditionValue(card, key, selected) end)
             end
         end
@@ -4447,8 +4360,12 @@ function UI:CardMacroAction(card)
     else self:ShowMacroDialog(card) end
 end
 
--- Addon-owned card menus avoid Forever's native controller-focus bindings.
-function UI:ShowCardMenu(owner, card)
+-- Addon-owned popup menus avoid Forever's native controller-focus bindings
+-- (Blizzard's context menus run SmartNavigation under addon taint). The
+-- build callback describes the entries like a Blizzard menu generator: titles,
+-- buttons, dividers and nested buttons (rendered as submenus with "< Back").
+-- Opening the menu again from the same owner closes it.
+function UI:ShowMenu(owner, build)
     local menu = self.cardMenu
     if menu and menu:IsShown() and menu.owner == owner then menu:Hide(); return end
     if not menu then
@@ -4476,7 +4393,7 @@ function UI:ShowCardMenu(owner, card)
     menu:SetFrameStrata("FULLSCREEN_DIALOG")
     menu:SetFrameLevel(800)
     -- Keep the action descriptions separate from pooled buttons so callbacks
-    -- always refer to the currently selected card, including form submenus.
+    -- always refer to the currently selected card, including submenus.
     local function Description()
         local description = {}
         function description:CreateButton(label, callback)
@@ -4493,69 +4410,7 @@ function UI:ShowCardMenu(owner, card)
         return description
     end
     local root = Description()
-    root:CreateTitle(CardName(card))
-    local rename = root:CreateButton("Rename", function() UI:RenameCard(card) end)
-    if IsFixedCard(card) and rename.SetEnabled then rename:SetEnabled(false) end
-    root:CreateButton("New subcard", function() UI:AddCard(CardID(card)) end)
-    local condition = card.condition or {}
-    local supportsFormChildren = IsMainBinderRoot(card) or tonumber(condition.specGroup) ~= nil
-    local formBinderId = supportsFormChildren and Call("GetCardBinderId", card) or nil
-    local binderClass = type(formBinderId) == "string" and formBinderId:match("^class:(.+)$") or nil
-    local formOptions = binderClass and (Call("GetFormOptions", binderClass) or {}) or {}
-    if #formOptions > 0 then
-        local formMenu = root:CreateButton("New form subcard")
-        if formMenu and formMenu.CreateButton then
-            for _, option in ipairs(formOptions) do
-                local formID = option.id
-                formMenu:CreateButton(option.label, function() UI:AddFormCard(card, formID) end)
-            end
-        end
-    end
-    -- Character card: add racials it lacks; replace it with another character's.
-    if card.templateKey == "default:character" then
-        root:CreateButton("Add racial abilities", function() UI:AddMissingRacials() end)
-        local others = Call("GetOtherCharacterSets") or {}
-        local copyMenu = root:CreateButton("Copy from…")
-        if #others == 0 and copyMenu.SetEnabled then copyMenu:SetEnabled(false) end
-        for _, other in ipairs(others) do
-            local source = other
-            copyMenu:CreateButton(tostring(source.name) .. " (" .. tostring(source.tiles or 0) .. ")",
-                function() UI:CopyCharacterFrom(source) end)
-        end
-    end
-    if not ParentID(card) then
-        local peeledChild = card.homeParentId ~= nil
-        root:CreateButton(peeledChild and "Return card to stack" or
-            (card.layoutMode == "floating" and "Return stack to binder" or "Detach stack"), function()
-            Mutate("Card layout changed", function()
-                if peeledChild then
-                    return UI:ReturnPeeledCard(card)
-                end
-                if IsMainBinderRoot(card) and card.layoutMode == "floating" then
-                    return UI:ReturnBinderStack(card)
-                end
-                return Call("UpdateCard", CardID(card), {
-                    layoutMode = card.layoutMode == "floating" and "stacked" or "floating",
-                }) ~= false
-            end)
-        end)
-    elseif UI:CanPeelCard(card) then
-        root:CreateButton("Take sheet out", function()
-            local binderId = Call("GetCardBinderId", card)
-            Mutate("Card detached", function()
-                return Call("UpdateCard", CardID(card), {
-                    parentId = false,
-                    homeParentId = ParentID(card),
-                    binderId = binderId,
-                    layoutMode = "floating",
-                }) ~= false
-            end)
-        end)
-    end
-    if not IsStandardCard(card) then
-        root:CreateDivider()
-        root:CreateButton("Delete card", function() UI:DeleteCard(card) end)
-    end
+    build(root)
     local function Render(entries, parent)
         for _, row in ipairs(menu.rows) do row:Hide() end
         local count = 0
@@ -4593,16 +4448,80 @@ function UI:ShowCardMenu(owner, card)
     menu:Show()
 end
 
+function UI:ShowCardMenu(owner, card)
+    self:ShowMenu(owner, function(root)
+        root:CreateTitle(CardName(card))
+        local rename = root:CreateButton("Rename", function() UI:RenameCard(card) end)
+        if IsFixedCard(card) and rename.SetEnabled then rename:SetEnabled(false) end
+        root:CreateButton("New subcard", function() UI:AddCard(CardID(card)) end)
+        local condition = card.condition or {}
+        local supportsFormChildren = IsMainBinderRoot(card) or tonumber(condition.specGroup) ~= nil
+        local formBinderId = supportsFormChildren and Call("GetCardBinderId", card) or nil
+        local binderClass = type(formBinderId) == "string" and formBinderId:match("^class:(.+)$") or nil
+        local formOptions = binderClass and (Call("GetFormOptions", binderClass) or {}) or {}
+        if #formOptions > 0 then
+            local formMenu = root:CreateButton("New form subcard")
+            if formMenu and formMenu.CreateButton then
+                for _, option in ipairs(formOptions) do
+                    local formID = option.id
+                    formMenu:CreateButton(option.label, function() UI:AddFormCard(card, formID) end)
+                end
+            end
+        end
+        -- Character card: add racials it lacks; replace it with another character's.
+        if card.templateKey == "default:character" then
+            root:CreateButton("Add racial abilities", function() UI:AddMissingRacials() end)
+            local others = Call("GetOtherCharacterSets") or {}
+            local copyMenu = root:CreateButton("Copy from…")
+            if #others == 0 and copyMenu.SetEnabled then copyMenu:SetEnabled(false) end
+            for _, other in ipairs(others) do
+                local source = other
+                copyMenu:CreateButton(tostring(source.name) .. " (" .. tostring(source.tiles or 0) .. ")",
+                    function() UI:CopyCharacterFrom(source) end)
+            end
+        end
+        if not ParentID(card) then
+            local peeledChild = card.homeParentId ~= nil
+            root:CreateButton(peeledChild and "Return card to stack" or
+                (card.layoutMode == "floating" and "Return stack to binder" or "Detach stack"), function()
+                Mutate("Card layout changed", function()
+                    if peeledChild then
+                        return UI:ReturnPeeledCard(card)
+                    end
+                    if IsMainBinderRoot(card) and card.layoutMode == "floating" then
+                        return UI:ReturnBinderStack(card)
+                    end
+                    return Call("UpdateCard", CardID(card), {
+                        layoutMode = card.layoutMode == "floating" and "stacked" or "floating",
+                    }) ~= false
+                end)
+            end)
+        elseif UI:CanPeelCard(card) then
+            root:CreateButton("Take sheet out", function()
+                local binderId = Call("GetCardBinderId", card)
+                Mutate("Card detached", function()
+                    return Call("UpdateCard", CardID(card), {
+                        parentId = false,
+                        homeParentId = ParentID(card),
+                        binderId = binderId,
+                        layoutMode = "floating",
+                    }) ~= false
+                end)
+            end)
+        end
+        if not IsStandardCard(card) then
+            root:CreateDivider()
+            root:CreateButton("Delete card", function() UI:DeleteCard(card) end)
+        end
+    end)
+end
+
 function UI:ShowAddRuleMenu(owner, card)
     if IsFixedCard(card) then
         self:SetStatus("Default card rules are fixed.", "warning")
         return
     end
-    if not (MenuUtil and MenuUtil.CreateContextMenu) then
-        self:SetStatus("The rule menu is unavailable. Try again after reloading.", "warning")
-        return
-    end
-    MenuUtil.CreateContextMenu(owner, function(_, root)
+    self:ShowMenu(owner, function(root)
         root:CreateTitle("Add condition")
         local definitions = { { "content", "Content" } }
         local binderId = Call("GetCardBinderId", card)
@@ -4616,13 +4535,7 @@ function UI:ShowAddRuleMenu(owner, card)
         end
         for _, definition in ipairs(definitions) do
             local key, label = definition[1], definition[2]
-            root:CreateButton(label, function()
-                if C_Timer and C_Timer.After then
-                    C_Timer.After(0, function() UI:ShowConditionMenu(owner, card, key) end)
-                else
-                    UI:ShowConditionMenu(owner, card, key)
-                end
-            end)
+            root:CreateButton(label, function() UI:ShowConditionMenu(owner, card, key) end)
         end
     end)
 end
@@ -4856,7 +4769,7 @@ function UI:CreateWorkspaceCard(id)
     view.columns.label:SetFont(view.columns.label:GetFont(), 9, "")
     view.less = IconButton(view, "−", 21); view.less:SetPoint("RIGHT", view.columns, "LEFT", -6, 0)
     view.chips = {}
-    for index, key in ipairs({ "role", "class", "spec", "content", "form", "activity" }) do
+    for index, key in ipairs({ "class", "spec", "content", "form" }) do
         local chip = Button(view, "", 76, 16)
         chip.label:SetFont(chip.label:GetFont(), 8, "")
         chip:SetPoint("TOPLEFT", 8 + (index - 1) * 80, -35)
@@ -5198,7 +5111,6 @@ function UI:RefreshWorkspace()
     for _, info in ipairs(binderFlat) do binderMembers[CardID(info.card)] = true end
     local settings = BindCardsDB and BindCardsDB.settings or {}
     local mode = settings.workspaceMode == "panel" and "panel" or "binder"
-    local experimentalCardSizing = true
     local iconSize = min(48, max(24, tonumber(settings.iconSize) or 36))
     local selectedColumns = selectedCard and min(12, max(3, tonumber(selectedCard.columns) or 6)) or 6
     local selectedCapacity = selectedCard and
@@ -5269,7 +5181,7 @@ function UI:RefreshWorkspace()
             selectedColumns, selectedCapacity, iconSize) or availablePageWidth
     local selectedCardResize = self.cardResize and self.cardResize.card == selectedCard and self.cardResize or nil
     local requestedFrontPageWidth = selectedCardResize and selectedCardResize.width or
-        (experimentalCardSizing and selectedCard and tonumber(selectedCard.paperWidth) or nil)
+        (selectedCard and tonumber(selectedCard.paperWidth) or nil)
     local frontPageWidth = requestedFrontPageWidth and
         min(availablePageWidth, max(300, requestedFrontPageWidth)) or automaticFrontPageWidth
     self.frontPageWidth = frontPageWidth
@@ -5513,7 +5425,7 @@ function UI:RefreshWorkspace()
             view.tab.icon:SetAlpha(emphasized and 1 or 0.42)
             Color(view.tab.activeMark, selected and selectedAccent or pathAccent)
             view.tab.activeMark:SetShown(active)
-            Skin(view.tab, ExperimentalCardSurface(emphasized and C.raised or C.paperAlt,
+            Skin(view.tab, CardSurface(emphasized and C.raised or C.paperAlt,
                     card, amberNested and 0.045 or 0.024),
                 amberNested and C.amber or
                 (selected and C.blue or ((active or onSelectedPath) and C.teal or C.faint)))
@@ -5528,7 +5440,7 @@ function UI:RefreshWorkspace()
             local hierarchyX = mode == "panel" and 0 or min(3, tonumber(info.depth) or 0) * 16
             local pageX = selectedLaneX + hierarchyX
             local requestedPaperWidth = paperResizeState and paperResizeState.width or
-                (experimentalCardSizing and tonumber(card.paperWidth) or nil)
+                tonumber(card.paperWidth)
             local viewWidth = floating and min(720, requestedPaperWidth or rootCard.floatWidth or 430) or frontPageWidth
             local cardIconSize = min(iconSize, max(18, floor((viewWidth - 16 - (columns - 1) * 6) / columns)))
             local gridStep = cardIconSize + 6
@@ -5536,7 +5448,7 @@ function UI:RefreshWorkspace()
             local gridHeight = rows * gridStep - 6
             local naturalHeight = card.collapsed and 35 or (78 + gridHeight)
             local requestedPaperHeight = paperResizeState and paperResizeState.height or
-                (experimentalCardSizing and tonumber(card.paperHeight) or nil)
+                tonumber(card.paperHeight)
             local height = card.collapsed and 35 or max(naturalHeight, requestedPaperHeight or naturalHeight)
             if floating then
                 view:SetParent(UIParent); view:SetFrameStrata("DIALOG"); view:SetFrameLevel(40)
@@ -5566,7 +5478,7 @@ function UI:RefreshWorkspace()
                 view:SetSize(viewWidth, height)
                 view:ClearAllPoints(); view:SetPoint("TOPLEFT", self.workspaceContent, "TOPLEFT", pageX, -5 - frontPageOffsetY)
                 selectedView = view
-                pageHeight = max(pageHeight, height + (experimentalCardSizing and 22 or 10) + frontPageOffsetY)
+                pageHeight = max(pageHeight, height + 22 + frontPageOffsetY)
             end
             if mode == "panel" and not floating then
                 view.tab:Hide()
@@ -5597,22 +5509,19 @@ function UI:RefreshWorkspace()
             local condition = card.condition or {}
             local specName = condition.specGroup == 1 and "Primary" or "Secondary"
             local chipValues = {
-                role = condition.role and ("Role · " .. Friendly(condition.role)) or "Any role",
                 class = condition.class and ("Class · " .. Friendly(condition.class)) or "Any class",
                 spec = condition.specGroup and ("Build · " .. specName) or "Any build",
                 content = condition.content and condition.content ~= "ANY" and ("Content · " .. Friendly(condition.content)) or "Any content",
                 form = condition.form and ("Form · " .. ((BindCards.FORM_DEFINITIONS[condition.form] and
                     BindCards.FORM_DEFINITIONS[condition.form].label) or condition.form)) or "Any form",
-                activity = condition.activity == "SKYRIDING" and "Activity · Skyriding" or "Any activity",
             }
-            local ruleKeys = { "role", "class", "spec", "content", "form", "activity" }
+            local ruleKeys = { "class", "spec", "content", "form" }
             local present = {}
             for _, key in ipairs(ruleKeys) do
-                if (key == "role" and condition.role) or (key == "class" and condition.class) or
+                if (key == "class" and condition.class) or
                     (key == "spec" and condition.specGroup) or
                     (key == "content" and condition.content and condition.content ~= "ANY") or
-                    (key == "form" and condition.form) or
-                    (key == "activity" and condition.activity) then
+                    (key == "form" and condition.form) then
                     present[#present + 1] = key
                 end
             end
@@ -5648,7 +5557,7 @@ function UI:RefreshWorkspace()
             view.overrideAll:SetShown(not card.collapsed and showOverride)
             Skin(view.overrideAll, card.overrideAllBindingsWhenActive and C.raised or C.paperAlt,
                 card.overrideAllBindingsWhenActive and C.amber or C.faint)
-            Skin(view, ExperimentalCardSurface(C.paper, card, 0.022),
+            Skin(view, CardSurface(C.paper, card, 0.022),
                 IsAmberNestedCard(card) and C.amber or (selected and C.blue or C.faint))
             view:SetAlpha(card.enabled == false and 0.52 or (active and 1 or 0.78))
             local compactHeader = viewWidth < 700
@@ -5680,7 +5589,7 @@ function UI:RefreshWorkspace()
                 view.paperResizeGrip:SetPoint("TOPLEFT", view, "BOTTOMRIGHT", 3, 3)
             end
             view.paperResizeGrip:SetFrameLevel(view:GetFrameLevel() + 12)
-            view.paperResizeGrip:SetShown(experimentalCardSizing and not card.collapsed and not InCombat())
+            view.paperResizeGrip:SetShown(not card.collapsed and not InCombat())
             view.resizeBadge:ClearAllPoints(); view.resizeBadge:SetPoint("BOTTOMRIGHT", view.resizeGrip, "TOPRIGHT", 0, 3)
             if paperResizeState then
                 view.resizeBadge:ClearAllPoints(); view.resizeBadge:SetPoint("BOTTOMRIGHT", view.paperResizeGrip, "TOPRIGHT", 0, 3)
@@ -5788,7 +5697,7 @@ function UI:RefreshWorkspace()
                 tab.icon:SetAlpha(emphasized and 1 or 0.42)
                 Color(tab.activeMark, tabSelected and selectedAccent or pathAccent)
                 tab.activeMark:SetShown(tabActive)
-                Skin(tab, ExperimentalCardSurface(emphasized and C.raised or C.paperAlt,
+                Skin(tab, CardSurface(emphasized and C.raised or C.paperAlt,
                         card, amberNested and 0.045 or 0.024),
                     amberNested and C.amber or
                     (tabSelected and C.blue or ((tabActive or onSelectedPath) and C.teal or C.faint)))
@@ -5849,7 +5758,7 @@ function UI:RefreshWorkspace()
             Color(sheet.nest, amberNested and C.amber or C.teal)
             sheet.edge:SetColorTexture(unpack(amberNested and C.amber or
                 (ParentID(layerCard) and C.raised or C.paper)))
-            Skin(sheet, ExperimentalCardSurface(C.paperAlt, layerCard, 0.018), amberNested and C.amber or
+            Skin(sheet, CardSurface(C.paperAlt, layerCard, 0.018), amberNested and C.amber or
                 (ParentID(layerCard) and C.teal or C.border))
             sheet.restingAlpha = mainRoot and 0.70 or 0.62
             sheet:SetAlpha(sheet.restingAlpha)
@@ -5896,7 +5805,7 @@ function UI:RefreshWorkspace()
                 Color(sheet.nest, amberNested and C.amber or C.teal)
                 sheet.edge:SetColorTexture(unpack(cover and C.blueSoft or
                     (amberNested and C.amber or (layer and layer.ancestor and C.raised or C.paper))))
-                Skin(sheet, ExperimentalCardSurface(C.paperAlt, layerCard, 0.018), amberNested and C.amber or
+                Skin(sheet, CardSurface(C.paperAlt, layerCard, 0.018), amberNested and C.amber or
                     (layer and layer.ancestor and C.teal or (cover and C.blue or C.border)))
                 sheet.restingAlpha = detachedGhost and 0.24 or
                     (cover and 0.42 or (mainRoot and 0.70 or 0.62))
@@ -7339,16 +7248,13 @@ function UI:Build()
     self.rightPanel = rail
     local railTitle = Font(rail, 11, C.muted); railTitle:SetPoint("TOPLEFT", 12, -11); railTitle:SetText("CARD RULES")
     local conditionDefs = {
-        { "role", "Role" }, { "class", "Class" }, { "spec", "Build" },
-        { "form", "Form" }, { "content", "Content" }, { "activity", "Activity" },
+        { "class", "Class" }, { "spec", "Build" }, { "form", "Form" }, { "content", "Content" },
     }
     self.conditionOptions = {
-        role = { "Any role", "DAMAGER", "HEALER", "TANK" },
         class = { "Any class", "DRUID", "HUNTER", "MAGE", "PALADIN", "PRIEST", "ROGUE", "SHAMAN", "WARLOCK", "WARRIOR" },
         spec = { "Any build", "Primary", "Secondary" },
         content = { "Any content", "PVE", "PVP" },
         form = { "Any form" },
-        activity = { "Any activity" },
     }
     self.conditionControls = {}
     self.conditionControlOrder = {}

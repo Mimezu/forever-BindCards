@@ -6,7 +6,7 @@ BindCards.ADDON_NAME = ADDON_NAME
 BindCards.IS_FOREVER = true
 BindCards.CLASS_IDS = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
 BindCards.CLASS_FILES = { [1]="WARRIOR", [2]="PALADIN", [3]="HUNTER", [4]="ROGUE", [5]="PRIEST", [7]="SHAMAN", [8]="MAGE", [9]="WARLOCK", [11]="DRUID" }
-BindCards.SCHEMA_VERSION = 3
+BindCards.SCHEMA_VERSION = 4
 BindCards.MAX_PROFILES = 64
 BindCards.MAX_PROFILE_SETS = 1024
 BindCards.MAX_CARDS = 512
@@ -52,11 +52,7 @@ local DB_DEFAULTS = {
         binderHeight = 300,
         binderManualSize = false,
         gatherLooseSheets = true,
-        suspendBindPad = false,
         showAbilityNames = true,
-        experimentalBinderStrings = true,
-        experimentalColorPass = true,
-        experimentalCardSizing = true,
         legacyBindingsRestored = false,
         bindingRestore = {},
     },
@@ -777,7 +773,6 @@ function BindCards:CreateCard(values, profileId)
     local condition, conditionValid, conditionMessage = self:NormalizeCondition(values.condition or values.conditions or {}, true)
     if not conditionValid then return nil, conditionMessage end
     if condition.form and not values.parentId then return nil, "Form conditions belong on subcards." end
-    if condition.activity and not values.parentId then return nil, "Activity conditions belong on General subcards." end
     if requestedBinderId ~= nil and not self:NormalizeBinderId(requestedBinderId) then
         return nil, "Invalid binder."
     end
@@ -790,7 +785,6 @@ function BindCards:CreateCard(values, profileId)
     if values.parentId then effectiveBinderId = self:GetCardBinderId(values.parentId, profile) end
     local binderClass = effectiveBinderId and effectiveBinderId:match("^class:(.+)$")
     if binderClass then
-        if condition.activity then return nil, "Activity cards must belong to the General binder." end
         if condition.class and condition.class ~= binderClass then return nil, "Class binder and condition do not match." end
         if condition.form and not self:IsFormValidForClass(condition.form, binderClass) then
             return nil, "That form is not available in this class binder."
@@ -798,8 +792,6 @@ function BindCards:CreateCard(values, profileId)
         if not values.parentId then condition.class = binderClass end
     elseif condition.form then
         return nil, "Form cards must belong to a supported class binder."
-    elseif condition.activity and effectiveBinderId ~= self.GENERAL_BINDER_ID then
-        return nil, "Activity cards must belong to the General binder."
     end
     local overrideAllBindingsWhenActive = values.overrideAllBindingsWhenActive == true
     if overrideAllBindingsWhenActive and
@@ -866,8 +858,6 @@ local function subtreeClassConflict(addon, cardId, binderClass, profile)
                 if class and class ~= binderClass then return true end
                 local form = candidate.condition and candidate.condition.form
                 if form and (not binderClass or not addon:IsFormValidForClass(form, binderClass)) then return true end
-                local activity = candidate.condition and candidate.condition.activity
-                if activity and binderClass then return true end
                 break
             end
             cursor = byId[ownerId]
@@ -941,12 +931,8 @@ function BindCards:UpdateCard(cardId, values, profileId)
     if intendedCondition.form and not intendedParentId and not intendedHomeParentId then
         return nil, "Form conditions belong on subcards."
     end
-    if intendedCondition.activity and not intendedParentId and not intendedHomeParentId then
-        return nil, "Activity conditions belong on General subcards."
-    end
     local binderClass = effectiveBinderId and effectiveBinderId:match("^class:(.+)$")
     if binderClass then
-        if intendedCondition.activity then return nil, "Activity cards must belong to the General binder." end
         if intendedCondition.class and intendedCondition.class ~= binderClass then
             return nil, "Class binder and condition do not match."
         end
@@ -959,8 +945,6 @@ function BindCards:UpdateCard(cardId, values, profileId)
         end
     elseif intendedCondition.form then
         return nil, "Form cards must belong to a supported class binder."
-    elseif intendedCondition.activity and effectiveBinderId ~= self.GENERAL_BINDER_ID then
-        return nil, "Activity cards must belong to the General binder."
     end
     local intendedOverride = card.overrideAllBindingsWhenActive == true
     if values.overrideAllBindingsWhenActive ~= nil then
@@ -1045,7 +1029,6 @@ function BindCards:MoveCard(cardId, parentId, targetIndex, profileId)
     end
     if wouldCreateCycle(self, card, parentId, profile) then return false, "Cards cannot contain themselves." end
     if card.condition.form and not parentId then return false, "Form conditions belong on subcards." end
-    if card.condition.activity and not parentId then return false, "Activity conditions belong on General subcards." end
     local inheritedBinderId = self:GetCardBinderId(card, profile)
     local effectiveBinderId = parentId and self:GetCardBinderId(parentId, profile) or inheritedBinderId
     local binderClass = effectiveBinderId and effectiveBinderId:match("^class:(.+)$")
@@ -1054,9 +1037,6 @@ function BindCards:MoveCard(cardId, parentId, targetIndex, profileId)
     end
     if card.condition.form and (not binderClass or not self:IsFormValidForClass(card.condition.form, binderClass)) then
         return false, "That form is not available in the destination binder."
-    end
-    if card.condition.activity and effectiveBinderId ~= self.GENERAL_BINDER_ID then
-        return false, "Activity cards must remain in the General binder."
     end
     if subtreeClassConflict(self, card.id, binderClass, profile) then
         return false, "A nested class condition conflicts with the destination binder."
@@ -1903,11 +1883,7 @@ function BindCards:RepairDatabase(database)
                     not effectiveClass or not self:IsFormValidForClass(card.condition.form, effectiveClass)) then
                     card.condition.form, card.enabled, changed = nil, false, true
                 end
-                if card.condition.activity and ((not card.parentId and not card.homeParentId) or
-                    effectiveBinderId ~= self.GENERAL_BINDER_ID) then
-                    card.condition.activity, card.overrideAllBindingsWhenActive, card.enabled, changed =
-                        nil, nil, false, true
-                elseif card.overrideAllBindingsWhenActive and
+                if card.overrideAllBindingsWhenActive and
                     (card.templateKey ~= nil or not (card.parentId or card.homeParentId) or
                         effectiveBinderId ~= self.GENERAL_BINDER_ID) then
                     card.overrideAllBindingsWhenActive, changed = nil, true
@@ -1978,14 +1954,7 @@ function BindCards:RepairDatabase(database)
     self.db.settings.binderHeight = math.max(150, math.min(1000, numberOr(sourceSettings.binderHeight, 300)))
     self.db.settings.binderManualSize = sourceSettings.binderManualSize == true
     self.db.settings.gatherLooseSheets = sourceSettings.gatherLooseSheets ~= false
-    self.db.settings.suspendBindPad = sourceSettings.suspendBindPad == true
     self.db.settings.showAbilityNames = sourceSettings.showAbilityNames ~= false
-    -- These features graduated from their experimental toggles. Keep the
-    -- legacy saved keys pinned on for schema compatibility while runtime UI
-    -- treats the features as unconditional.
-    self.db.settings.experimentalBinderStrings = true
-    self.db.settings.experimentalColorPass = true
-    self.db.settings.experimentalCardSizing = true
     self.db.settings.legacyBindingsRestored = sourceSettings.legacyBindingsRestored == true
     self.db.settings.bindingRestore = {}
     if type(sourceSettings.bindingRestore) == "table" then
@@ -2014,11 +1983,7 @@ function BindCards:RepairDatabase(database)
         sourceSettings.binderHeight ~= self.db.settings.binderHeight or
         sourceSettings.binderManualSize ~= self.db.settings.binderManualSize or
         sourceSettings.gatherLooseSheets ~= self.db.settings.gatherLooseSheets or
-        sourceSettings.suspendBindPad ~= self.db.settings.suspendBindPad or
         sourceSettings.showAbilityNames ~= self.db.settings.showAbilityNames or
-        sourceSettings.experimentalBinderStrings ~= self.db.settings.experimentalBinderStrings or
-        sourceSettings.experimentalColorPass ~= self.db.settings.experimentalColorPass or
-        sourceSettings.experimentalCardSizing ~= self.db.settings.experimentalCardSizing or
         sourceSettings.legacyBindingsRestored ~= self.db.settings.legacyBindingsRestored or
         sourceSettings.defaultProfileId ~= self.db.settings.defaultProfileId then changed = true end
     for key in pairs(sourceSettings) do
@@ -2028,11 +1993,7 @@ function BindCards:RepairDatabase(database)
             key ~= "windowManualSize" and key ~= "windowX" and key ~= "windowY" and
             key ~= "binderWidth" and key ~= "binderHeight" and
             key ~= "binderManualSize" and key ~= "gatherLooseSheets" and
-            key ~= "suspendBindPad" and
             key ~= "showAbilityNames" and
-            key ~= "experimentalBinderStrings" and
-            key ~= "experimentalColorPass" and
-            key ~= "experimentalCardSizing" and
             key ~= "legacyBindingsRestored" and
             key ~= "bindingRestore" then changed = true end
     end
@@ -2052,6 +2013,17 @@ local DATABASE_MIGRATIONS = {
     end,
     [3] = function(database)
         database.schemaVersion = 3
+    end,
+    -- 0.4.44: the experimental toggles (always on since 0.4.x) and the
+    -- BindPad blocker setting are gone; drop their saved keys.
+    [4] = function(database)
+        if type(database.settings) == "table" then
+            database.settings.experimentalBinderStrings = nil
+            database.settings.experimentalColorPass = nil
+            database.settings.experimentalCardSizing = nil
+            database.settings.suspendBindPad = nil
+        end
+        database.schemaVersion = 4
     end,
 }
 
@@ -2216,9 +2188,8 @@ end
 
 local function sameCondition(left, right)
     left, right = left or {}, right or {}
-    return left.role == right.role and left.class == right.class and left.specID == right.specID and left.specGroup == right.specGroup and
-        (left.content or "ANY") == (right.content or "ANY") and left.form == right.form and
-        left.activity == right.activity
+    return left.class == right.class and left.specGroup == right.specGroup and
+        (left.content or "ANY") == (right.content or "ANY") and left.form == right.form
 end
 
 local function isEmptyCondition(condition)
@@ -2797,10 +2768,13 @@ eventFrame:RegisterEvent("PLAYER_TALENT_UPDATE")
 eventFrame:RegisterEvent("TRAIT_CONFIG_UPDATED")
 eventFrame:RegisterEvent("ACTIVE_COMBAT_CONFIG_CHANGED")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("PLAYER_FLAGS_CHANGED")
--- Build 70338 reports PvP flag changes with their own event.
+-- Build 70338 reports PvP flag changes with their own event (Blizzard's
+-- player frame uses it). Older clients only have PLAYER_FLAGS_CHANGED, which
+-- also fires for AFK/DND.
 if C_EventUtils and C_EventUtils.IsEventValid and C_EventUtils.IsEventValid("PLAYER_PVP_FLAG_CHANGED") then
     eventFrame:RegisterEvent("PLAYER_PVP_FLAG_CHANGED")
+else
+    eventFrame:RegisterEvent("PLAYER_FLAGS_CHANGED")
 end
 eventFrame:RegisterEvent("WAR_MODE_STATUS_UPDATE")
 eventFrame:RegisterEvent("ZONE_CHANGED")

@@ -1,3 +1,9 @@
+# 0.4.44
+
+- Rule menus (a card's rule chips, the "+" Add condition button and the CARD RULES controls) now use BindCards' own popup, the one the card "•••" menu already uses, instead of Blizzard's context menu. Blizzard's menus run the gamepad focus manager under addon taint, which could leave A/B dead until a reload. Same entries; Escape, a click elsewhere or the same chip again closes them.
+- Removed dead code: the BindPad blocker setting (`suspendBindPad`, never reachable from the UI), the always-on experimental toggles (their saved keys are dropped by a schema 4 migration; the previous save is kept in the backup) and the retail role/activity (Skyriding) rule paths. Saved cards that still carry such a rule load as before: the repair drops them, as it already did.
+- PvP rule: on clients with `PLAYER_PVP_FLAG_CHANGED` (70338+) `PLAYER_FLAGS_CHANGED` is no longer registered as well (it also fires for AFK/DND and caused a needless recompile). Older clients keep the old event.
+
 # 0.4.43
 
 - Live client (1.60.1.70707) review. Racial detection checked against the launch racials: no active racial was added, removed or renamed since the beta list, so new characters on live get the same two racials per race. The Skyborne leyline racial is also matched under its "Read Leyline" spelling.

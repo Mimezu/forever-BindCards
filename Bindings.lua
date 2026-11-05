@@ -151,56 +151,6 @@ local function IsHoverKeyAction(action)
         action:match("^CLICK BindCardsHoverKeys:") ~= nil
 end
 
-local function IsBindPadBindingAction(action)
-    if issecretvalue and issecretvalue(action) then return false end
-    return type(action) == "string" and action:match("^CLICK BindPad") ~= nil
-end
-
-local function GetBindPadBindingKeys()
-    local keys = {}
-    if not GetNumBindings or not GetBinding then return keys end
-    for index = 1, GetNumBindings() do
-        local command, _, key1, key2 = GetBinding(index)
-        if IsBindPadBindingAction(command) then
-            if type(key1) == "string" and key1 ~= "" then keys[key1] = true end
-            if type(key2) == "string" and key2 ~= "" then keys[key2] = true end
-        end
-    end
-    return keys
-end
-
-local function GetBindPadBlocker()
-    if BindCards.bindPadBlocker then return BindCards.bindPadBlocker end
-    if InCombatLockdown() then return nil end
-    local button = CreateFrame("Button", "BindCardsBindPadBlocker", UIParent, "SecureActionButtonTemplate")
-    button:EnableMouse(false)
-    button:SetSize(1, 1)
-    button:SetAlpha(0)
-    button:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -300, 98)
-    button:RegisterForClicks("AnyDown", "AnyUp")
-    button:Show()
-    BindCards.bindPadBlocker = button
-    return button
-end
-
-function BindCards:InstallBindPadRefreshHooks()
-    if self.bindPadRefreshHooksInstalled or not hooksecurefunc or not _G.BindPadCore then return end
-    local core = _G.BindPadCore
-    local function RefreshAfterBindPadChange()
-        if BindCards.db and BindCards.db.settings and BindCards.db.settings.suspendBindPad == true then
-            BindCards:RequestRecompile("bindpad-bindings-changed")
-        end
-    end
-    local hooked = false
-    for _, method in ipairs({ "DoRestoreAllKeys", "ManuallySetBinding" }) do
-        if type(core[method]) == "function" then
-            hooksecurefunc(core, method, RefreshAfterBindPadChange)
-            hooked = true
-        end
-    end
-    self.bindPadRefreshHooksInstalled = hooked
-end
-
 local function ReadBindingAction(key, checkOverride)
     -- Persisted controller gestures and mouseover bindings are not keys
     -- accepted by native APIs.
@@ -704,19 +654,6 @@ local function CompileBindingsForContext(addon, sources, context, gamepad)
     return winners, cards, states, hoverWinners
 end
 
-local function HasSkyridingCondition(addon, sources)
-    for _, source in ipairs(sources) do
-        if source.binderId == addon.GENERAL_BINDER_ID and source.bindingsEnabled ~= false then
-            for _, card in ipairs(source.cards or {}) do
-                if card.enabled ~= false and card.condition and card.condition.activity == "SKYRIDING" then
-                    return true
-                end
-            end
-        end
-    end
-    return false
-end
-
 function BindCards:CompileCurrentBindings(profile)
     local sources, context = GetBindingSources(self, profile), self:GetPlayerContext()
     return CompileBindingsForContext(self, sources, context)
@@ -740,13 +677,11 @@ function BindCards:CompileBindings(profile)
     self.lastCompiledHoverStates = hoverStates
     self.lastCompiledHoverBindings = hoverWinners
     local options = self:GetFormOptions(context.class)
-    local hasSkyriding = HasSkyridingCondition(self, sources)
-    if #options == 0 and not hasSkyriding then return winners, cards, states, {}, nil end
+    if #options == 0 then return winners, cards, states, {}, nil end
 
     local variants, allStates = {}, { "base" }
     local baseContext = self.CopyTable(context)
     baseContext.form = nil
-    baseContext.activity = nil
     local baseWinners, _, _, baseHoverWinners = CompileBindingsForContext(self, sources, baseContext)
     variants.base = baseWinners
     hoverStates.byState.base = baseHoverWinners
@@ -762,19 +697,6 @@ function BindCards:CompileBindings(profile)
     end
     if #options > 0 then hoverStates.driver = self:GetConditionalBindingStateDriver(context.class) end
     self.lastCompiledHoverBindings = hoverStates.byState[hoverStates.current]
-    if hasSkyriding then
-        local skyridingContext = self.CopyTable(baseContext)
-        skyridingContext.activity = "SKYRIDING"
-        variants.skyriding = CompileBindingsForContext(self, sources, skyridingContext)
-        allStates[#allStates + 1] = "skyriding"
-        for _, option in ipairs(options) do
-            local state = "skyriding_" .. option.id
-            local stateContext = self.CopyTable(skyridingContext)
-            stateContext.form = option.id
-            variants[state] = CompileBindingsForContext(self, sources, stateContext)
-            allStates[#allStates + 1] = state
-        end
-    end
 
     local allKeys = {}
     for _, state in ipairs(allStates) do
@@ -792,9 +714,7 @@ function BindCards:CompileBindings(profile)
             routes[key] = {}
             for _, state in ipairs(allStates) do routes[key][state] = variants[state][key] end
             for _, option in ipairs(options) do
-                if BindingIdentity(variants[option.id][key]) ~= BindingIdentity(variants.base[key]) or
-                    (hasSkyriding and BindingIdentity(variants["skyriding_" .. option.id][key]) ~=
-                        BindingIdentity(variants.skyriding[key])) then
+                if BindingIdentity(variants[option.id][key]) ~= BindingIdentity(variants.base[key]) then
                     routes[key].blockInactive = true
                     break
                 end
@@ -802,7 +722,7 @@ function BindCards:CompileBindings(profile)
         end
     end
     return winners, cards, states, routes,
-        self:GetConditionalBindingStateDriver(context.class, hasSkyriding), allStates
+        self:GetConditionalBindingStateDriver(context.class), allStates
 end
 
 local function InstallOverridePlan(plan)
@@ -931,8 +851,8 @@ local function SpecSignature(spec)
 end
 
 -- Everything the secure install depends on: each key's prepared action, the
--- form routes and driver, BindPad-blocked keys and the key-down CVar.
-local function BindingSignature(winnerTargets, formRoutes, formDriver, formStates, blockerKeys)
+-- form routes and driver and the key-down CVar.
+local function BindingSignature(winnerTargets, formRoutes, formDriver, formStates)
     local parts = { "keydown=" .. tostring(GetCVarBool and GetCVarBool("ActionButtonUseKeyDown")),
         "driver=" .. tostring(formDriver), "states=" .. table.concat(formStates or {}, ",") }
     local keys = {}
@@ -949,10 +869,6 @@ local function BindingSignature(winnerTargets, formRoutes, formDriver, formState
             parts[#parts + 1] = state .. ":" .. SpecSignature(route[state])
         end
     end
-    keys = {}
-    for key in pairs(blockerKeys) do keys[#keys + 1] = key end
-    table.sort(keys)
-    parts[#parts + 1] = "b:" .. table.concat(keys, ",")
     return table.concat(parts, "\030")
 end
 
@@ -1018,20 +934,6 @@ function BindCards:ApplyBindings(reason)
         return false, 0, 1
     end
 
-    local blocker, blockerKeys = nil, {}
-    if settings.suspendBindPad == true then
-        self:InstallBindPadRefreshHooks()
-        blocker = GetBindPadBlocker()
-        if not blocker then
-            self:Fire("BINDINGS_APPLIED", 0, cards, reason, 1)
-            return false, 0, 1
-        end
-        for rawKey in pairs(GetBindPadBindingKeys()) do
-            local key = self:NormalizeKey(rawKey)
-            if key and not self:IsGamepadShortcut(key) and not winnerTargets[key] and not preparedFormRoutes[key] then blockerKeys[key] = true end
-        end
-    end
-
     -- Stage the one-time normal-binding migration before live mutation.
     self.directBindingKeys = self.directBindingKeys or {}
     settings.bindingRestore = settings.bindingRestore or {}
@@ -1068,7 +970,7 @@ function BindCards:ApplyBindings(reason)
     -- An unchanged result needs no secure teardown and reinstall; publish the
     -- refreshed card states only. Pending work and legacy migration always install.
     local signature = #migration == 0 and
-        BindingSignature(winnerTargets, preparedFormRoutes, formDriver, formStates, blockerKeys) or nil
+        BindingSignature(winnerTargets, preparedFormRoutes, formDriver, formStates) or nil
     if signature and AMBIENT_RECOMPILE_REASONS[reason] and not self.bindingsPending
         and self.lastAppliedOverridePlan and self.lastBindingSignature == signature then
         self.lastCompiledBindings = winners
@@ -1210,11 +1112,6 @@ function BindCards:ApplyBindings(reason)
             bindingActions[key] = "CLICK " .. activeProxy:GetName() .. ":" .. token
         end
     end
-    local bindPadBlocked = 0
-    for key in pairs(blockerKeys) do
-        newPlan[#newPlan + 1] = { key = key, kind = "click", buttonName = blocker:GetName(), token = "LeftButton" }
-        bindPadBlocked = bindPadBlocked + 1
-    end
 
     local previousPlan = self.lastAppliedOverridePlan or {}
     local previousFormPlan = self.lastAppliedFormBindingPlan
@@ -1270,7 +1167,6 @@ function BindCards:ApplyBindings(reason)
     self.lastActiveSecureSpecs = CopySecureSpecs(preparedByToken)
     self.lastCompiledBindings = winners
     self.lastActiveCardStates = states
-    self.lastSuppressedBindPadCount = bindPadBlocked
     self.lastBindingFailureCount = 0
     if settings.legacyBindingsRestored ~= true and completeLegacyMigration then
         settings.legacyBindingsRestored = true
@@ -1278,7 +1174,7 @@ function BindCards:ApplyBindings(reason)
         self.displacedBindings = settings.bindingRestore
         for key in pairs(self.directBindingKeys) do self.directBindingKeys[key] = nil end
     end
-    local appliedCount = #newPlan - bindPadBlocked + (formPlan.nativeDrivers and 0 or #formPlan.keys)
+    local appliedCount = #newPlan + (formPlan.nativeDrivers and 0 or #formPlan.keys)
     self.lastBindingSignature = signature
     self.lastAppliedBindingCount = appliedCount
     ApplyHoverSafely(self)
@@ -1290,14 +1186,6 @@ end
 function BindCards:PrepareHoverAction(tile)
     local ok, prepared = pcall(PrepareSecureSpec, tile)
     return ok and prepared or nil
-end
-
-function BindCards:SetBindPadSuspended(enabled)
-    if not self.db then return false, "Database is unavailable." end
-    self.db.settings = self.db.settings or {}
-    self.db.settings.suspendBindPad = enabled == true
-    self:RequestRecompile("bindpad-suppression-toggled", true)
-    return true
 end
 
 function BindCards:RequestRecompile(reason, immediate)

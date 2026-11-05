@@ -88,8 +88,6 @@ local function validateProfile(profile, allowLegacyScope)
                 (card.parentId ~= nil or card.binderId == nil or card.layoutMode ~= "floating")) or
             (type(card.condition) == "table" and card.condition.form ~= nil and
                 card.parentId == nil and card.homeParentId == nil) or
-            (type(card.condition) == "table" and card.condition.activity ~= nil and
-                card.parentId == nil and card.homeParentId == nil) or
             (binderClass and not card.parentId and not card.homeParentId and
                 (type(card.condition) ~= "table" or card.condition.class ~= binderClass)) or
             (card.enabled ~= nil and type(card.enabled) ~= "boolean") or
@@ -181,9 +179,6 @@ local function validateProfile(profile, allowLegacyScope)
         if card.condition and card.condition.form and
             (not binderClass or not BindCards:IsFormValidForClass(card.condition.form, binderClass)) then
             return false, "A form condition conflicts with its class binder."
-        end
-        if card.condition and card.condition.activity and effectiveBinderId ~= BindCards.GENERAL_BINDER_ID then
-            return false, "An activity condition conflicts with its binder."
         end
         if card.overrideAllBindingsWhenActive and not BindCards:CanCardUseGlobalPriority(card, profile) then
             return false, "Global priority belongs on a user-created General subcard."

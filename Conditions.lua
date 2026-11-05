@@ -114,8 +114,6 @@ function BindCards:GetConditionalBindingStateDriver(class)
     return self:GetFormStateDriver(class)
 end
 
-function BindCards.GetCurrentActivity() return nil end
-
 function BindCards:RefreshSpecGroup()
     if InCombatLockdown and InCombatLockdown() then return self.activeSpecGroup end
     local getter = C_SpecializationInfo and C_SpecializationInfo.GetActiveSpecGroup

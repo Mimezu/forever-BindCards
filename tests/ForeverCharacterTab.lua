@@ -165,8 +165,7 @@ assert(Lane('binder', 'general') < Lane('binder', 'class') and Lane('binder', 'c
 assert(Lane('panel', 'character') == Lane('panel', 'general'), 'panel mode keeps one column')
 
 -- The character card's icon is the character's portrait.
-local portraitChunk = assert(loadstring('local ROLE_ATLASES = {}\n' ..
-    section('local function ApplyCardIcon(texture, card)', 'local function EntryID(entry)') ..
+local portraitChunk = assert(loadstring(section('local function ApplyCardIcon(texture, card)', 'local function EntryID(entry)') ..
     '\nreturn ApplyCardIcon'))
 local portraitUnit
 setfenv(portraitChunk, setmetatable({
@@ -213,7 +212,7 @@ end
 function MenuUI:CopyCharacterFrom(sourceSet) copied = sourceSet end
 local menuChunk = assert(loadstring('local UI, Button, Skin, C, CursorInside, tinsert, CardName, CardID, ' ..
     'IsStandardCard, IsMainBinderRoot, Call, ParentID, Mutate, IsFixedCard = ...\n' ..
-    section('function UI:ShowCardMenu(', 'function UI:ShowAddRuleMenu(')))
+    section('function UI:ShowMenu(', 'function UI:ShowAddRuleMenu(')))
 menuChunk(MenuUI, frame, function() end, {}, function(f) return f and f.inside end, table.insert,
     function(c) return c.name end, function(c) return c.id end,
     function(c) return c.templateKey ~= nil end,
