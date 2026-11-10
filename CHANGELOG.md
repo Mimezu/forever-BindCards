@@ -1,3 +1,7 @@
+# 0.4.45
+
+- Fix the camera not moving when a left or right drag starts on a nameplate, and a click on a nameplate not selecting the unit. Nameplates are compact unit frames, so the mouseover key handler was installed on them as on party and raid frames; that turned their mouse on (Blizzard keeps it off and hit-tests plates in the engine) and the plate swallowed the press. Nameplates are no longer registered as mouseover frames. Mouseover keys therefore no longer act on nameplates (they still act on unit frames).
+
 # 0.4.44
 
 - Rule menus (a card's rule chips, the "+" Add condition button and the CARD RULES controls) now use BindCards' own popup, the one the card "•••" menu already uses, instead of Blizzard's context menu. Blizzard's menus run the gamepad focus manager under addon taint, which could leave A/B dead until a reload. Same entries; Escape, a click elsewhere or the same chip again closes them.

@@ -232,6 +232,14 @@ kind, spell, unit = Press(raid, 'F')
 assert(spell == 2061 and unit == 'raid1')
 Leave(raid)
 
+-- Nameplates come through the same Blizzard setup call and are left alone: a
+-- wrap would turn their mouse on and block the camera drag that starts there.
+local plate = UnitButton('NamePlate1UnitFrame', 'nameplate1')
+plate.GetNamePlateFrame = function() return {} end
+CompactUnitFrame_SetUpFrame(plate)
+assert(addon:ApplyBindings('plate'))
+assert(not addon.hoverCast.frames[plate] and not plate.wraps.OnEnter, 'nameplates are never hover frames')
+
 -- Removing every mouseover key empties the tables; wraps claim nothing.
 for _, tile in ipairs({ heal, smite, dispel, wheel }) do assert(addon:ClearTileBindings(tile.id, profile.id)) end
 assert(addon:ClearTileHoverBindings(renew.id, 'HELP', profile.id))
@@ -265,6 +273,8 @@ local function Permissive(name, template)
     function frame:CreateTexture() return Permissive() end
     function frame:CreateFontString() return Permissive() end
     return setmetatable(frame, { __index = function(_, k)
+        -- Nameplate-only methods stay absent: HoverCast tells plates by them.
+        if k == 'GetNamePlateFrame' or k == 'UpdateHitTestArea' then return nil end
         if type(k) == 'string' and k:match('^%u') then return function() end end
     end })
 end

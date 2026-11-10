@@ -2,7 +2,7 @@
 ## Title: BindCards
 ## Notes: Visual conditional keymapping without action bars.
 ## Author: Mimezu
-## Version: 0.4.44
+## Version: 0.4.45
 ## X-BindCards-Client: Forever
 ## SavedVariables: BindCardsDB, BindCardsDBBackup, BindCardsGamepadStorage
 ## LoadSavedVariablesFirst: 1

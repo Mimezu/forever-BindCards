@@ -75,6 +75,13 @@ local function ValidFrame(frame)
     if type(frame) ~= "table" or type(frame.SetAttribute) ~= "function" or
         type(frame.GetAttribute) ~= "function" then return false end
     if frame.IsForbidden and frame:IsForbidden() then return false end
+    -- Nameplates are compact unit frames too (Blizzard sets them up through
+    -- CompactUnitFrame_SetUpFrame), but Blizzard keeps their mouse off and
+    -- hit-tests them in the engine. An OnEnter wrap turns the mouse on, and
+    -- the plate then swallows the press that should start a camera drag.
+    if type(frame.GetNamePlateFrame) == "function" or type(frame.UpdateHitTestArea) == "function" then
+        return false
+    end
     return true
 end
 
