@@ -1,3 +1,7 @@
+# 0.4.47
+
+- Appearance is now a small movable window: opens beside the binder (no longer over the Menu button), drag to move, × or Esc closes.
+
 # 0.4.46
 
 - Window key: a game binding (Key Bindings > BindCards) that opens or closes the window. Set it from the header menu (**Window key** row: click, press a key; Esc cancels) or from the Settings page (right-click clears). Replacing a key that did something else says so; a key also used by a card says the card wins. Not in combat.

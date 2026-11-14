@@ -7038,7 +7038,8 @@ function UI:Build()
     self:ConfigureSpellbookButton(spellbookButton)
     self.combatBadge:ClearAllPoints(); self.combatBadge:SetPoint("RIGHT", spellbookButton, "LEFT", -8, 0)
     local display = CreateFrame("Frame", "BindCardsAppearancePopover", UIParent, "BackdropTemplate")
-    display:SetSize(252, 306); display:SetPoint("TOPRIGHT", menuButton, "BOTTOMRIGHT", 0, -6)
+    -- Opens beside the binder so it never covers the Menu button.
+    display:SetSize(252, 306); display:SetPoint("TOPLEFT", f, "TOPRIGHT", 6, 0)
     -- Above DIALOG card ears/inspectors, but below profile windows and modal
     -- overlays. TOOLTIP would outrank even the full-screen confirmation veil.
     display:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -7047,7 +7048,16 @@ function UI:Build()
     Skin(display, C.panel, C.border); display:Hide(); display:EnableMouse(true)
     self.displayPopover = display
     display:SetScript("OnShow", function() UI:RefreshAppearancePopoverLayer() end)
+    -- A small window: drag anywhere off the buttons, X or Esc closes it.
+    display:SetMovable(true)
+    display:RegisterForDrag("LeftButton")
+    display:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    display:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    if UISpecialFrames then tinsert(UISpecialFrames, "BindCardsAppearancePopover") end
     local appearance = Font(display, 9, C.muted); appearance:SetPoint("TOPLEFT", 10, -9); appearance:SetText("APPEARANCE")
+    local displayClose = IconButton(display, "×", 18)
+    displayClose:SetPoint("TOPRIGHT", -5, -4)
+    displayClose:SetScript("OnClick", function() display:Hide() end)
     self.appearanceButtons = {}
     local appearanceOptions = {
         { "eui", "Ellesmere", 70, 10, -25 },
