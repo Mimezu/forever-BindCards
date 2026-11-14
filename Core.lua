@@ -20,7 +20,7 @@ BindCards.VALID_UI_THEMES = {
     eui = true, mimezu = true, luminous = true, charcoal = true, chalk = true,
     tungsten = true, editorial = true, snes = true, famicom = true, violetmist = true, violetbloom = true,
     gamecube = true, genesis = true, ps1 = true, ps2 = true,
-    xbox = true, xbox360 = true, legacy = true,
+    xbox = true, xbox360 = true, legacy = true, macmono = true, msdos = true, win31 = true,
 }
 BindCards.VALID_CLASSES = {}
 for _, class in pairs(BindCards.CLASS_FILES) do BindCards.VALID_CLASSES[class] = true end

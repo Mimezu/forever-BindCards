@@ -393,6 +393,57 @@ THEMES.xbox360 = ConsoleTheme({
     teal="356322", amber="78551B", red="9A3E39", faint="98A88C",
 })
 
+-- Retro desktops: strict period palettes, BindCards' own bitmap fonts and the
+-- chrome drawn by RetroSkin.lua (bevels, shadows, pinstripes, double lines).
+local FONTS = "Interface\\AddOns\\BindCards\\Assets\\Fonts\\"
+local function RetroTheme(kind, spec, extra)
+    local theme = ConsoleTheme(spec)
+    theme.retro = kind
+    for key, value in pairs(extra) do
+        theme[key] = type(value) == "string" and RGB(value) or value
+    end
+    theme.input = theme.input or theme.palette.slot
+    return theme
+end
+-- 1-bit Macintosh: white, black, inverted selection, Chicago-like bold.
+THEMES.macmono = RetroTheme("mac", {
+    window="FFFFFF", panel="FFFFFF", paper="FFFFFF", paperAlt="FFFFFF",
+    slot="FFFFFF", raised="FFFFFF", hover="FFFFFF", border="000000",
+    faint="000000", blue="000000", blueSoft="000000", teal="000000",
+    drop="000000", amber="000000", amberMuted="000000", amberFaint="000000",
+    red="000000", text="000000", muted="000000", shortcutInactive="000000", topText="FFFFFF",
+}, {
+    headerTop="FFFFFF", primaryFill="FFFFFF", primaryHover="FFFFFF", primaryInk="000000",
+    inputText="000000", font = { regular = FONTS .. "RetroBold.ttf" },
+})
+THEMES.macmono.palette.faint = { 0, 0, 0, 0.45 }
+THEMES.macmono.palette.amberFaint = { 0, 0, 0, 0.30 }
+-- MS-DOS text mode: CGA 16 colours, blue panels, grey bars, cyan selection.
+THEMES.msdos = RetroTheme("dos", {
+    window="0000AA", panel="0000AA", paper="0000AA", paperAlt="0000AA",
+    slot="000000", raised="AAAAAA", hover="00AAAA", border="AAAAAA",
+    faint="5555FF", blue="FFFF55", blueSoft="00AAAA", teal="55FF55",
+    drop="55FFFF", amber="FFFF55", amberMuted="AA5500", amberFaint="AA5500",
+    red="FF5555", text="FFFFFF", muted="AAAAAA", shortcutInactive="AAAAAA", topText="000000",
+}, {
+    headerTop="AAAAAA", headerInk="000000", buttonInk="000000",
+    primaryFill="00AAAA", primaryHover="55FFFF", primaryInk="000000",
+    inputText="FFFFFF", font = { regular = FONTS .. "RetroMono.ttf" },
+})
+-- Windows 3.1: white windows, #C0C0C0 bevelled buttons, navy title bar.
+THEMES.win31 = RetroTheme("win", {
+    window="FFFFFF", panel="FFFFFF", paper="FFFFFF", paperAlt="C0C0C0",
+    slot="808080", raised="C0C0C0", hover="DFDFDF", border="000000",
+    faint="808080", blue="000080", blueSoft="000080", teal="008080",
+    drop="008080", amber="808000", amberMuted="808000", amberFaint="808000",
+    red="800000", text="000000", muted="404040", shortcutInactive="404040", topText="FFFFFF",
+}, {
+    headerTop="000080", headerInk="FFFFFF",
+    primaryFill="C0C0C0", primaryHover="C0C0C0", primaryInk="000000",
+    input="FFFFFF", inset="FFFFFF", inputText="000000",
+    font = { regular = FONTS .. "RetroSans.ttf", bold = FONTS .. "RetroBold.ttf", boldAt = 11 },
+})
+
 local function Theme(theme)
     return THEMES[theme] or THEMES[activeTheme]
 end
@@ -465,7 +516,8 @@ end
 function S.GetPrimaryButtonStyle(hovered)
     local theme = Theme()
     if theme.primaryHover then
-        return hovered and theme.primaryHover or theme.tabSelection, theme.tabInk
+        return hovered and theme.primaryHover or theme.primaryFill or theme.tabSelection,
+            theme.primaryInk or theme.tabInk
     end
 end
 
@@ -695,7 +747,8 @@ local function Repaint()
         if data.buttonBackground then
             ApplyColor(data.buttonBackground,
                 data.topSurface and TopSurfaceColor(theme, data.topSurface, data.tabState) or
-                    (object.bindCardsButtonKind == "primary" and theme.primaryHover and theme.tabSelection) or theme.raised)
+                    (object.bindCardsButtonKind == "primary" and theme.primaryHover and
+                    (theme.primaryFill or theme.tabSelection)) or theme.raised)
         end
         if data.editBackground then ApplyColor(data.editBackground, theme.input) end
         if data.checkboxBackground then ApplyColor(data.checkboxBackground, theme.input) end
@@ -714,8 +767,11 @@ local function Repaint()
     end
 end
 
+local fontTheme
 function S.SetTheme(theme)
     activeTheme = THEMES[theme] and theme or "eui"
+    local font = Theme().font
+    if font ~= fontTheme then fontTheme = font; S.RefreshFonts() end
     Repaint()
     for _, callback in ipairs(lookCallbacks) do pcall(callback, activeTheme) end
     return activeTheme
@@ -818,12 +874,86 @@ function S.Inset(inset)
     if inset.NineSlice then S.FadeNineSlice(inset.NineSlice) end
 end
 
+-- Retro fonts are bitmap designs on a 12-row em: draw them at a whole number
+-- of physical pixels per dot (MONOCHROME), never smeared between pixels.
+local fonts = setmetatable({}, { __mode = "k" })
+local function Dots(frame, size)
+    local pixel = OnePixel(frame)
+    return math.max(1, math.floor((size or 12) / 12 / pixel + 0.5)), pixel
+end
+
+local function ApplyFont(fontString)
+    local info = fonts[fontString]
+    if not info or Forbidden(fontString) then return end
+    local font = Theme().font
+    local justifyH = fontString.GetJustifyH and fontString:GetJustifyH()
+    info.applying = true
+    if font then
+        if not info.shadow and fontString.GetShadowOffset then
+            info.shadow = { fontString:GetShadowOffset() }
+        end
+        local dots, pixel = Dots(fontString.GetParent and fontString:GetParent(), info.size)
+        local file = font.bold and info.size >= (font.boldAt or 99) and font.bold or font.regular
+        fontString:SetFont(file, 12 * dots * pixel, info.outline and "OUTLINE, MONOCHROME" or "MONOCHROME")
+        if fontString.SetShadowOffset then fontString:SetShadowOffset(0, 0) end
+    else
+        fontString:SetFont(FONT, info.size, "")
+        if info.shadow and fontString.SetShadowOffset then
+            fontString:SetShadowOffset(info.shadow[1], info.shadow[2])
+            info.shadow = nil
+        end
+    end
+    if justifyH then fontString:SetJustifyH(justifyH) end
+    info.applying = nil
+end
+
+local function TrackFont(fontString, size, flags)
+    local info = fonts[fontString]
+    if info then return info end
+    info = { size = size or 12, outline = type(flags) == "string" and flags:find("OUTLINE") ~= nil }
+    fonts[fontString] = info
+    if hooksecurefunc then
+        -- Later SetFont calls (bigger glyphs, outlines) become the new base size.
+        hooksecurefunc(fontString, "SetFont", function(self, _, newSize, newFlags)
+            if info.applying or type(newSize) ~= "number" then return end
+            if issecretvalue and issecretvalue(newSize) then return end
+            info.size = newSize
+            info.outline = type(newFlags) == "string" and newFlags:find("OUTLINE") ~= nil
+            if Theme().font then ApplyFont(self) end
+        end)
+    end
+    return info
+end
+
+function S.RefreshFonts()
+    for fontString in pairs(fonts) do ApplyFont(fontString) end
+end
+
+function S.GetRetro()
+    return Theme().retro
+end
+
+-- Theme colors that only retro skins define (headerInk, buttonInk, ...).
+function S.GetThemeColor(key)
+    local color = Theme()[key]
+    if type(color) == "table" and type(color[1]) == "number" then return color end
+end
+
+-- One retro "dot": the physical pixel multiple that the 12-size font uses.
+function S.GetDot(frame)
+    local dots, pixel = Dots(frame, 12)
+    return dots * pixel
+end
+
 function S.Font(fontString, r, g, b)
     if Forbidden(fontString) or not (fontString.GetFont and fontString.SetFont) then return end
-    local _, size = fontString:GetFont()
+    local _, size, flags = fontString:GetFont()
     local justifyH = fontString.GetJustifyH and fontString:GetJustifyH()
     local justifyV = fontString.GetJustifyV and fontString:GetJustifyV()
     if issecretvalue and issecretvalue(size) then return end
+    local tracked = fonts[fontString]
+    if tracked and not tracked.applying then size = tracked.size end
+    TrackFont(fontString, size, flags)
     local createFont = _G.CreateFont
     if fontString.SetFontObject and createFont then
         if not shadowFont then
@@ -834,7 +964,7 @@ function S.Font(fontString, r, g, b)
         end
         fontString:SetFontObject(shadowFont)
     end
-    fontString:SetFont(FONT, size or 12, "")
+    ApplyFont(fontString)
     if justifyH then fontString:SetJustifyH(justifyH) end
     if justifyV then fontString:SetJustifyV(justifyV) end
     if r and fontString.SetTextColor then fontString:SetTextColor(r, g, b or r) end

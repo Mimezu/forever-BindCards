@@ -217,6 +217,7 @@ local function Skin(frame, color, border)
     frame:SetBackdropBorderColor(unpack(b))
     UI.themeSurfaces[frame] = { color = color or C.panel, border = b }
     if BindCards.LegacySkin then BindCards.LegacySkin:Surface(frame, color or C.panel, b) end
+    if BindCards.RetroSkin then BindCards.RetroSkin:Surface(frame, color or C.panel, b) end
 end
 
 function UI:StyleEditableText(edit)
@@ -961,6 +962,7 @@ function UI:ApplyAppearanceTheme(theme, refresh)
         end
     end
     if BindCards.LegacySkin then BindCards.LegacySkin:Refresh() end
+    if BindCards.RetroSkin then BindCards.RetroSkin:Refresh() end
     return theme
 end
 
@@ -975,6 +977,7 @@ function UI:SetAppearanceTheme(theme)
         violetbloom = "Violet Bloom", legacy = "Blizzard Legacy",
         gamecube = "GameCube", genesis = "Genesis", ps1 = "PS1", ps2 = "PS2",
         xbox = "Xbox", xbox360 = "Xbox 360",
+        macmono = "Mac Mono", msdos = "MS-DOS", win31 = "Windows 3.1",
     }
     self:SetStatus((labels[applied] or "Ellesmere") .. " appearance applied.", "success")
 end
@@ -4069,6 +4072,7 @@ end
 
 function UI:RefreshVisualLabels()
     self:RefreshAppearancePopoverLayer()
+    if BindCards.RetroSkin then BindCards.RetroSkin:Rescale() end
     local settings = BindCardsDB and BindCardsDB.settings or {}
     local scaleText = floor((settings.uiScale or 1) * 100 + 0.5) .. "%"
     local iconText = (settings.iconSize or 36) .. "px"
@@ -7031,6 +7035,12 @@ function UI:Build()
     self.combatBadge = Font(header, 10, C.amber)
     self.combatBadge:SetPoint("RIGHT", self.quickButton, "LEFT", -14, 0)
     self.combatBadge:SetText("Combat")
+    -- Retro title bars (DOS grey, Windows navy) set their own header ink.
+    if BindCards.RetroSkin then
+        for _, text in ipairs({ title, self.profileName, self.combatBadge }) do
+            BindCards.RetroSkin:Ink(text, "headerInk")
+        end
+    end
     local menuButton = Button(header, "Menu", 56, 24); menuButton:SetPoint("RIGHT", self.quickButton, "LEFT", -7, 0)
     self.headerMenuButton = menuButton
     local spellbookButton = Button(header, "Spells", 48, 24, nil, "InsecureActionButtonTemplate")
@@ -7039,7 +7049,7 @@ function UI:Build()
     self.combatBadge:ClearAllPoints(); self.combatBadge:SetPoint("RIGHT", spellbookButton, "LEFT", -8, 0)
     local display = CreateFrame("Frame", "BindCardsAppearancePopover", UIParent, "BackdropTemplate")
     -- Opens beside the binder so it never covers the Menu button.
-    display:SetSize(252, 306); display:SetPoint("TOPLEFT", f, "TOPRIGHT", 6, 0)
+    display:SetSize(252, 334); display:SetPoint("TOPLEFT", f, "TOPRIGHT", 6, 0)
     -- Above DIALOG card ears/inspectors, but below profile windows and modal
     -- overlays. TOOLTIP would outrank even the full-screen confirmation veil.
     display:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -7077,7 +7087,10 @@ function UI:Build()
         { "xbox360", "Xbox 360", 78, 160, -137 },
         { "violetmist", "Violet Mist", 100, 10, -165 },
         { "violetbloom", "Violet Bloom", 120, 116, -165 },
-        { "legacy", "Blizzard Legacy", 228, 10, -193 },
+        { "macmono", "Mac Mono", 70, 10, -193 },
+        { "msdos", "MS-DOS", 68, 86, -193 },
+        { "win31", "Win 3.1", 78, 160, -193 },
+        { "legacy", "Blizzard Legacy", 228, 10, -221 },
     }
     for _, option in ipairs(appearanceOptions) do
         local theme, label, width, x, y = option[1], option[2], option[3], option[4], option[5]
@@ -7090,14 +7103,14 @@ function UI:Build()
         choice:SetScript("OnClick", function() UI:SetAppearanceTheme(theme) end)
         self.appearanceButtons[theme] = choice
     end
-    local ds = Font(display, 10, C.muted); ds:SetPoint("TOPLEFT", 10, -233); ds:SetText("Scale")
-    local dsm = IconButton(display, "−", 20); dsm:SetPoint("TOPLEFT", 65, -226); dsm:SetScript("OnClick", function() UI:SetVisualSetting("uiScale", -0.05) end)
+    local ds = Font(display, 10, C.muted); ds:SetPoint("TOPLEFT", 10, -261); ds:SetText("Scale")
+    local dsm = IconButton(display, "−", 20); dsm:SetPoint("TOPLEFT", 65, -254); dsm:SetScript("OnClick", function() UI:SetVisualSetting("uiScale", -0.05) end)
     self.displayScaleValue = Font(display, 9, C.text); self.displayScaleValue:SetWidth(42); self.displayScaleValue:SetJustifyH("CENTER"); self.displayScaleValue:SetPoint("LEFT", dsm, "RIGHT", 3, 0)
-    local dsp = IconButton(display, "+", 20); dsp:SetPoint("TOPLEFT", 138, -226); dsp:SetScript("OnClick", function() UI:SetVisualSetting("uiScale", 0.05) end)
-    local di = Font(display, 10, C.muted); di:SetPoint("TOPLEFT", 10, -264); di:SetText("Icons")
-    local dim = IconButton(display, "−", 20); dim:SetPoint("TOPLEFT", 65, -257); dim:SetScript("OnClick", function() UI:SetVisualSetting("iconSize", -2) end)
+    local dsp = IconButton(display, "+", 20); dsp:SetPoint("TOPLEFT", 138, -254); dsp:SetScript("OnClick", function() UI:SetVisualSetting("uiScale", 0.05) end)
+    local di = Font(display, 10, C.muted); di:SetPoint("TOPLEFT", 10, -292); di:SetText("Icons")
+    local dim = IconButton(display, "−", 20); dim:SetPoint("TOPLEFT", 65, -285); dim:SetScript("OnClick", function() UI:SetVisualSetting("iconSize", -2) end)
     self.displayIconValue = Font(display, 9, C.text); self.displayIconValue:SetWidth(42); self.displayIconValue:SetJustifyH("CENTER"); self.displayIconValue:SetPoint("LEFT", dim, "RIGHT", 3, 0)
-    local dip = IconButton(display, "+", 20); dip:SetPoint("TOPLEFT", 138, -257); dip:SetScript("OnClick", function() UI:SetVisualSetting("iconSize", 2) end)
+    local dip = IconButton(display, "+", 20); dip:SetPoint("TOPLEFT", 138, -285); dip:SetScript("OnClick", function() UI:SetVisualSetting("iconSize", 2) end)
     self:RefreshAppearanceSelector()
     menuButton:SetScript("OnClick", function(self)
         UI:ToggleHeaderMenu(self, display)

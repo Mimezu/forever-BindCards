@@ -1,3 +1,9 @@
+# 0.4.48
+
+- Three retro appearances (Menu > Display): **Mac Mono** (1-bit black and white, pinstriped title bar, rounded buttons, ringed default button, inverted selection, drop shadows), **MS-DOS** (CGA blue panels, grey menu bar, double-line boxes, cyan selection, solid text-mode shadows) and **Win 3.1** (white windows, navy title bar, bevelled #C0C0C0 buttons, sunken slots, framed dialogs).
+- Each brings its own bitmap font, drawn for BindCards: a bold Chicago-style face, a VGA-style 8-pixel monospace and a thin + bold Windows pair (`Assets/Fonts`, rebuilt by `tools/retrofont.py`). Text snaps to whole screen pixels, so it stays crisp at any UI scale.
+- New files: restart the game once (a `/reload` does not load new files).
+
 # 0.4.47
 
 - Appearance is now a small movable window: opens beside the binder (no longer over the Menu button), drag to move, × or Esc closes.

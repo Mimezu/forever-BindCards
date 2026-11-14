@@ -10,6 +10,8 @@ drag targets, and bindings stay unchanged. All previous appearances remain
 available in the same menu. After updating the addon, use `/reload` once to load
 the skin module.
 
+Retro appearances: **Mac Mono**, **MS-DOS**, **Win 3.1**. Own bitmap fonts (`tools/retrofont.py`), period chrome.
+
 The **Spells** header button forwards your click to Blizzard's spellbook micro button through Blizzard's out-of-combat action-button template. It keeps the native click handler rather than calling a spellbook toggle from addon Lua. In combat, or if the native control is unavailable, use the displayed native key or controller-menu guidance.
 
 BindCards stays open when you use **Spells**, with the editor and its cards above the spellbook so you can drag abilities onto your cards. Spellbook positioning is left to Blizzard or your preferred window-management addon.
