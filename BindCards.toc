@@ -2,7 +2,7 @@
 ## Title: BindCards
 ## Notes: Visual conditional keymapping without action bars.
 ## Author: Mimezu
-## Version: 0.4.45
+## Version: 0.4.46
 ## X-BindCards-Client: Forever
 ## SavedVariables: BindCardsDB, BindCardsDBBackup, BindCardsGamepadStorage
 ## LoadSavedVariablesFirst: 1
@@ -20,3 +20,4 @@ UIHelpers.lua
 EUIFacade.lua
 LegacySkin.lua
 UI.lua
+Access.lua

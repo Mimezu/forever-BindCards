@@ -53,6 +53,8 @@ local DB_DEFAULTS = {
         binderManualSize = false,
         gatherLooseSheets = true,
         showAbilityNames = true,
+        minimapIcon = true,
+        minimapAngle = 200,
         legacyBindingsRestored = false,
         bindingRestore = {},
     },
@@ -1955,6 +1957,8 @@ function BindCards:RepairDatabase(database)
     self.db.settings.binderManualSize = sourceSettings.binderManualSize == true
     self.db.settings.gatherLooseSheets = sourceSettings.gatherLooseSheets ~= false
     self.db.settings.showAbilityNames = sourceSettings.showAbilityNames ~= false
+    self.db.settings.minimapIcon = sourceSettings.minimapIcon ~= false
+    self.db.settings.minimapAngle = numberOr(sourceSettings.minimapAngle, 200) % 360
     self.db.settings.legacyBindingsRestored = sourceSettings.legacyBindingsRestored == true
     self.db.settings.bindingRestore = {}
     if type(sourceSettings.bindingRestore) == "table" then
@@ -1984,6 +1988,8 @@ function BindCards:RepairDatabase(database)
         sourceSettings.binderManualSize ~= self.db.settings.binderManualSize or
         sourceSettings.gatherLooseSheets ~= self.db.settings.gatherLooseSheets or
         sourceSettings.showAbilityNames ~= self.db.settings.showAbilityNames or
+        sourceSettings.minimapIcon ~= self.db.settings.minimapIcon or
+        sourceSettings.minimapAngle ~= self.db.settings.minimapAngle or
         sourceSettings.legacyBindingsRestored ~= self.db.settings.legacyBindingsRestored or
         sourceSettings.defaultProfileId ~= self.db.settings.defaultProfileId then changed = true end
     for key in pairs(sourceSettings) do
@@ -1993,7 +1999,7 @@ function BindCards:RepairDatabase(database)
             key ~= "windowManualSize" and key ~= "windowX" and key ~= "windowY" and
             key ~= "binderWidth" and key ~= "binderHeight" and
             key ~= "binderManualSize" and key ~= "gatherLooseSheets" and
-            key ~= "showAbilityNames" and
+            key ~= "showAbilityNames" and key ~= "minimapIcon" and key ~= "minimapAngle" and
             key ~= "legacyBindingsRestored" and
             key ~= "bindingRestore" then changed = true end
     end

@@ -1,3 +1,9 @@
+# 0.4.46
+
+- Window key: a game binding (Key Bindings > BindCards) that opens or closes the window. Set it from the header menu (**Window key** row: click, press a key; Esc cancels) or from the Settings page (right-click clears). Replacing a key that did something else says so; a key also used by a card says the card wins. Not in combat.
+- Minimap icon: click opens the window, drag moves it around the minimap. Shown by default; **Minimap icon** in the header menu or the Settings page hides it (`minimapIcon`, `minimapAngle` in settings).
+- Settings > AddOns > BindCards: Open, `/bc`, Minimap icon, Window key.
+
 # 0.4.45
 
 - Fix the camera not moving when a left or right drag starts on a nameplate, and a click on a nameplate not selecting the unit. Nameplates are compact unit frames, so the mouseover key handler was installed on them as on party and raid frames; that turned their mouse on (Blizzard keeps it off and hit-tests plates in the engine) and the plate swallowed the press. Nameplates are no longer registered as mouseover frames. Mouseover keys therefore no longer act on nameplates (they still act on unit frames).

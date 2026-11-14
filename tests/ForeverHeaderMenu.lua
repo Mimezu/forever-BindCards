@@ -34,6 +34,12 @@ function UI:UndoLastChange() self.undone = true end
 assert(loadstring('local UI, Button, Skin, C, CursorInside, tinsert = ...\n' ..
     source:sub(first, last - 1)))(UI, frame, function() end, {},
     function(f) return f.inside end, table.insert)
+local calls, windowKey, captureDone = {}, nil, nil
+Call = function(method, arg)
+    calls[method] = (calls[method] or 0) + 1
+    if method == 'GetWindowKeyText' then return windowKey or 'Not set' end
+    if method == 'StartWindowKeyCapture' then captureDone = arg; return true end
+end
 local owner, display = frame(), frame()
 local function open()
     UI:ToggleHeaderMenu(owner, display)
@@ -44,7 +50,7 @@ local function click(index)
     assert(not UI.headerMenu:IsShown())
 end
 open()
-assert(#UI.headerMenu.rows == 5)
+assert(#UI.headerMenu.rows == 7)
 assert(UI.headerMenu.rows[2].text == '[x] Show ability names')
 click(2)
 assert(BindCardsDB.settings.showAbilityNames == false and UI.refreshed == 2)
@@ -56,14 +62,26 @@ open(); click(3)
 assert(BindCardsDB.settings.gatherLooseSheets == false)
 open(); click(1); assert(display:IsShown())
 open(); click(4); assert(UI.profileOwner == owner)
-local testFramesToggled
-Call = function(method) if method == 'ToggleHoverTestFrames' then testFramesToggled = true end end
-open(); assert(UI.headerMenu.rows[5].text == 'Test unit frames'); click(5); assert(testFramesToggled)
+open(); assert(UI.headerMenu.rows[5].text == 'Test unit frames'); click(5); assert(calls.ToggleHoverTestFrames == 1)
+-- Minimap icon toggle refreshes the button.
+open(); assert(UI.headerMenu.rows[6].text == '[x] Minimap icon'); click(6)
+assert(BindCardsDB.settings.minimapIcon == false and calls.RefreshMinimapButton == 1)
+open(); assert(UI.headerMenu.rows[6].text == '[ ] Minimap icon'); click(6)
+assert(BindCardsDB.settings.minimapIcon == true)
+-- Window key row listens in place and shows the new key.
+open(); assert(UI.headerMenu.rows[7].text == 'Window key: Not set')
+UI.headerMenu.rows[7].scripts.OnClick()
+assert(UI.headerMenu:IsShown(), 'key row keeps the menu open')
+assert(UI.headerMenu.rows[7].text == 'Window key: press a key' and captureDone)
+windowKey = 'Ctrl-B'; captureDone()
+assert(UI.headerMenu.rows[7].text == 'Window key: Ctrl-B')
+UI.headerMenu.scripts.OnHide(); assert(calls.StopWindowKeyCapture == 1)
+UI.headerMenu:Hide()
 UI.lastUndo = { label = 'edit' }
 open(); assert(UI.headerMenu.rows[1].text == 'Undo edit'); click(1)
 assert(UI.undone)
 UI.lastUndo = nil
-open(); assert(not UI.headerMenu.rows[6]:IsShown())
+open(); assert(not UI.headerMenu.rows[8]:IsShown())
 UI:ToggleHeaderMenu(owner, display); assert(not UI.headerMenu:IsShown())
 open(); owner.inside = true
 UI.headerMenu.scripts.OnEvent(UI.headerMenu); assert(UI.headerMenu:IsShown())

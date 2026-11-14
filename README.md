@@ -1,6 +1,6 @@
 # BindCards for WoW Forever
 
-Visual keybinding cards for spells, items and macros. Open with `/bc`.
+Visual keybinding cards for spells, items and macros. Open with `/bc`, the minimap icon or a window key (header menu).
 
 Choose **Menu → Blizzard Legacy** for the Forever Legacy appearance. It uses
 the client's leather background, metal frame pieces, gold-edged controls, and

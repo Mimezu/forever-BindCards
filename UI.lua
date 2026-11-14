@@ -6839,13 +6839,14 @@ function UI:ToggleHeaderMenu(owner, display)
             end
         end)
         owner:HookScript("OnHide", function() menu:Hide() end)
+        menu:SetScript("OnHide", function() Call("StopWindowKeyCapture") end)
         if UISpecialFrames then tinsert(UISpecialFrames, "BindCardsHeaderMenu") end
     end
     menu:SetFrameStrata("FULLSCREEN_DIALOG")
     menu:SetFrameLevel(800)
     for _, row in ipairs(menu.rows) do row:Hide() end
     local count = 0
-    local function AddRow(label, callback)
+    local function AddRow(label, callback, keepOpen)
         count = count + 1
         local row = menu.rows[count]
         if not row then
@@ -6856,8 +6857,8 @@ function UI:ToggleHeaderMenu(owner, display)
         row:SetPoint("TOPLEFT", 8, -8 - (count - 1) * 30)
         row.label:SetText(label)
         row:SetScript("OnClick", function()
-            menu:Hide()
-            callback()
+            if not keepOpen then menu:Hide() end
+            callback(row)
         end)
         row:SetFrameLevel(801)
         row:Show()
@@ -6867,10 +6868,11 @@ function UI:ToggleHeaderMenu(owner, display)
     end
     AddRow("Display", function() display:SetShown(not display:IsShown()) end)
     local settings = BindCardsDB.settings
-    local function ToggleSetting(key, label, refresh)
+    local function ToggleSetting(key, label, refresh, after)
         AddRow((settings[key] ~= false and "[x] " or "[ ] ") .. label, function()
             settings[key] = settings[key] == false
             if refresh then UI:RefreshGrid(); UI:RefreshWorkspace() end
+            if after then Call(after) end
         end)
     end
     ToggleSetting("showAbilityNames", "Show ability names", true)
@@ -6878,6 +6880,15 @@ function UI:ToggleHeaderMenu(owner, display)
     AddRow("Profiles", function() UI:ShowProfiles(owner) end)
     -- Stand-in unit frames for testing mouseover bindings without a group.
     AddRow("Test unit frames", function() Call("ToggleHoverTestFrames") end)
+    ToggleSetting("minimapIcon", "Minimap icon", false, "RefreshMinimapButton")
+    -- Window key: the row is the keycap; it listens in place.
+    local function KeyLabel() return "Window key: " .. (Call("GetWindowKeyText") or "Not set") end
+    AddRow(KeyLabel(), function(row)
+        row.label:SetText("Window key: press a key")
+        if not Call("StartWindowKeyCapture", function() row.label:SetText(KeyLabel()) end) then
+            row.label:SetText(KeyLabel())
+        end
+    end, true)
     menu:SetHeight(16 + count * 30)
     menu:ClearAllPoints()
     menu:SetPoint("TOPRIGHT", owner, "BOTTOMRIGHT", 0, -6)

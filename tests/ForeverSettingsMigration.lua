@@ -36,7 +36,7 @@ BindCardsDB = {
     schemaVersion = 3, nextId = 1, profiles = {},
     selections = { defaults = { classProfileIds = {} }, characters = {} },
     settings = {
-        showAbilityNames = false, gatherLooseSheets = false,
+        showAbilityNames = false, gatherLooseSheets = false, minimapIcon = false, minimapAngle = 450,
         experimentalBinderStrings = true, experimentalColorPass = true, experimentalCardSizing = true,
         suspendBindPad = true,
     },
@@ -49,6 +49,8 @@ for _, key in ipairs({ 'experimentalBinderStrings', 'experimentalColorPass', 'ex
 end
 assert(addon.db.settings.showAbilityNames == false and addon.db.settings.gatherLooseSheets == false,
     'other settings survive the migration')
+assert(addon.db.settings.minimapIcon == false and addon.db.settings.minimapAngle == 90,
+    'minimap icon setting survives; angle wraps')
 assert(type(BindCardsDBBackup) == 'table' and BindCardsDBBackup.data.settings.suspendBindPad == true,
     'the pre-migration save is backed up')
 assert(addon.db.settings.legacyBindingsRestored == false and type(addon.db.settings.bindingRestore) == 'table',
