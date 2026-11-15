@@ -414,7 +414,7 @@ THEMES.macmono = RetroTheme("mac", {
     red="000000", text="000000", muted="000000", shortcutInactive="000000", topText="FFFFFF",
 }, {
     headerTop="FFFFFF", primaryFill="FFFFFF", primaryHover="FFFFFF", primaryInk="000000",
-    inputText="000000", font = { regular = FONTS .. "RetroBold.ttf" },
+    inputText="000000", font = { regular = FONTS .. "RetroBold.ttf", maxSize = 12 },
 })
 THEMES.macmono.palette.faint = { 0, 0, 0, 0.45 }
 THEMES.macmono.palette.amberFaint = { 0, 0, 0, 0.30 }
@@ -428,7 +428,7 @@ THEMES.msdos = RetroTheme("dos", {
 }, {
     headerTop="AAAAAA", headerInk="000000", buttonInk="000000",
     primaryFill="00AAAA", primaryHover="55FFFF", primaryInk="000000",
-    inputText="FFFFFF", font = { regular = FONTS .. "RetroMono.ttf" },
+    inputText="FFFFFF", font = { regular = FONTS .. "RetroMono.ttf", maxSize = 12 },
 })
 -- Windows 3.1: white windows, #C0C0C0 bevelled buttons, navy title bar.
 THEMES.win31 = RetroTheme("win", {
@@ -441,7 +441,7 @@ THEMES.win31 = RetroTheme("win", {
     headerTop="000080", headerInk="FFFFFF",
     primaryFill="C0C0C0", primaryHover="C0C0C0", primaryInk="000000",
     input="FFFFFF", inset="FFFFFF", inputText="000000",
-    font = { regular = FONTS .. "RetroSans.ttf", bold = FONTS .. "RetroBold.ttf", boldAt = 11 },
+    font = { regular = FONTS .. "RetroSans.ttf", bold = FONTS .. "RetroBold.ttf", boldAt = 11, maxSize = 12 },
 })
 
 local function Theme(theme)
@@ -524,6 +524,8 @@ end
 function S.GetNativeTopColor(kind)
     local theme = Theme()
     if theme.nativeTop then return TopSurfaceColor(theme, kind) end
+    -- Retro title bars (DOS grey, Windows navy) color the header backdrop too.
+    if theme.retro and kind == "header" then return theme.headerTop end
 end
 
 local state = setmetatable({}, { __mode = "k" })
@@ -892,8 +894,10 @@ local function ApplyFont(fontString)
         if not info.shadow and fontString.GetShadowOffset then
             info.shadow = { fontString:GetShadowOffset() }
         end
-        local dots, pixel = Dots(fontString.GetParent and fontString:GetParent(), info.size)
-        local file = font.bold and info.size >= (font.boldAt or 99) and font.bold or font.regular
+        -- Period screens had one system size: titles stay on the same dots.
+        local size = math.min(info.size, font.maxSize or info.size)
+        local dots, pixel = Dots(fontString.GetParent and fontString:GetParent(), size)
+        local file = font.bold and size >= (font.boldAt or 99) and font.bold or font.regular
         fontString:SetFont(file, 12 * dots * pixel, info.outline and "OUTLINE, MONOCHROME" or "MONOCHROME")
         if fontString.SetShadowOffset then fontString:SetShadowOffset(0, 0) end
     else

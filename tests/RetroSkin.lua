@@ -99,7 +99,13 @@ assert(Shown(button) > 0 and Shown(tile) > 0 and Shown(header) > 0)
 assert(R.objects[button].parts.bT and R.objects[button].parts.bT.color[1] == 1, "white top bevel")
 assert(R.objects[tile].parts.bT.color[1] == 0.502, "sunken tile: grey top-left")
 assert(title.r == 1 and title.g == 1, "white title on the navy bar")
+assert(S.GetNativeTopColor("header")[3] > 0.4 and S.GetNativeTopColor("header")[1] == 0, "navy header backdrop")
+assert(S.GetNativeTopColor(true) == nil, "tabs keep their own colors")
 assert(close.label.text == "\195\151", "retro close prints the font's x")
+local glyph = S.GetVisualState(close).closeGlyph
+glyph:SetAlpha(1); glyph:Show(); R:Paint(close)
+assert(glyph.alpha == 0 and not glyph.shown, "atlas X stays hidden under the font's x")
+assert(Near(title.size, 24 * px), "one system size: titles stay on 2-pixel dots")
 -- Primary (default) button gets the heavier black rim.
 local rim = R.objects[primary].parts.oT
 assert(Near(rim.height, 2 * S.GetDot(primary)))
@@ -110,7 +116,7 @@ button:Fire("OnMouseUp")
 
 -- A later SetFont (IconButton's bigger glyph) becomes the new base size.
 button.label:SetFont("x", 16, "")
-assert(Near(button.label.size, 36 * px), "16 -> 3-pixel dots at 1440p")
+assert(Near(button.label.size, 24 * px), "bigger glyphs keep the system size")
 button.label:SetFont("x", 11, "")
 
 S.SetTheme("msdos")

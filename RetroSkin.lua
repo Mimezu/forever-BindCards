@@ -196,14 +196,15 @@ function R:Paint(frame)
     -- The close glyph is an atlas X; retro skins print their own font's ×.
     if role == "close" and frame.label then
         local glyph = data.closeGlyph
-        if on and not item.closeText then
+        if on then
+            -- Every paint: other skins and hover handlers may bring the atlas back.
             item.closeText = true
             frame.label:SetText("\195\151")
-            if glyph then glyph:SetAlpha(0) end
-        elseif not on and item.closeText then
+            if glyph then glyph:SetAlpha(0); glyph:Hide() end
+        elseif item.closeText then
             item.closeText = nil
             frame.label:SetText("")
-            if glyph then glyph:SetAlpha(1) end
+            if glyph then glyph:SetAlpha(1); glyph:Show() end
         end
     end
     item.painting = nil
