@@ -120,6 +120,8 @@ local function EntryTileUnderCursor()
     return nil, false
 end
 
+local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+
 local function CardTabUnderCursor()
     -- Retail's hit-test result respects ScrollFrame clipping and occlusion.
     -- Raw frame rectangles do not: a clipped docked tab can still report that
@@ -139,15 +141,11 @@ local function CardTabUnderCursor()
     end
 
     -- Compatibility fallback for clients/test harnesses without GetMouseFoci.
-    local strataRank = {
-        BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5,
-        FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8,
-    }
     local best, bestRank, bestLevel
     for _, view in pairs(UI.cardViews or {}) do
         local tab = view.tab
         if tab and tab:IsShown() and tab.bindCardsCard and CursorInside(tab) then
-            local rank = strataRank[tab:GetFrameStrata()] or 0
+            local rank = STRATA_RANK[tab:GetFrameStrata()] or 0
             local level = tab:GetFrameLevel() or 0
             if not best or rank > bestRank or (rank == bestRank and level > bestLevel) then
                 best, bestRank, bestLevel = tab, rank, level
@@ -159,7 +157,7 @@ local function CardTabUnderCursor()
     -- can be moved directly to another card without first opening it.
     for _, row in ipairs(UI.navRows or {}) do
         if row and row:IsShown() and row.bindCardsCard and CursorInside(row) then
-            local rank = strataRank[row:GetFrameStrata()] or 0
+            local rank = STRATA_RANK[row:GetFrameStrata()] or 0
             local level = row:GetFrameLevel() or 0
             if not best or rank > bestRank or (rank == bestRank and level > bestLevel) then
                 best, bestRank, bestLevel = row, rank, level
@@ -660,14 +658,10 @@ end
 
 function UI:UpdateEntryCardHighlight()
     local target, targetRank, targetLevel
-    local strataRank = {
-        BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5,
-        FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8,
-    }
     if self.dragEntry and not CardTabUnderCursor() then
         for _, view in pairs(self.cardViews or {}) do
             if view:IsShown() and CursorInside(view) then
-                local rank = strataRank[view:GetFrameStrata()] or 0
+                local rank = STRATA_RANK[view:GetFrameStrata()] or 0
                 local level = view:GetFrameLevel()
                 if not target or rank > targetRank or (rank == targetRank and level > targetLevel) then
                     target, targetRank, targetLevel = view, rank, level
