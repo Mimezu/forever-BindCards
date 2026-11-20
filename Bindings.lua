@@ -1103,7 +1103,11 @@ function BindCards:ApplyBindings(reason)
             local clauses = {}
             for clause in formPlan.driver:gmatch("[^;]+") do
                 local condition, state = clause:match("^%s*(.-)%s*([%w_]+)%s*$")
-                if not state then return false, 0, 1 end
+                if not state then
+                    ConfigureLiveProxy(previousSpecs)
+                    self:Fire("BINDINGS_APPLIED", 0, cards, reason, 1)
+                    return false, 0, 1
+                end
                 local prepared = preparedFormRoutes[key][state] or preparedFormRoutes[key].base
                 clauses[#clauses + 1] = condition .. " " .. (prepared and prepared.token or "BC_INACTIVE_FORM")
             end
