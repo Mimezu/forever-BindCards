@@ -2810,6 +2810,10 @@ eventFrame:SetScript("OnEvent", function(frame, event, ...)
         BindCards:RefreshSpecGroup()
         BindCards:RequestRecompile("combat-ended")
         BindCards:ApplyPendingBindings()
+        if BindCards.bindingConflictRefreshPending then
+            BindCards.bindingConflictRefreshPending = nil
+            BindCards:RequestBindingConflictRefresh()
+        end
     elseif event == "CVAR_UPDATE" then
         local cvarName = ...
         if issecretvalue and issecretvalue(cvarName) then cvarName = nil end

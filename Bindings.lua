@@ -486,6 +486,7 @@ end
 
 function BindCards:RequestBindingConflictRefresh()
     if not self.db then return end
+    if InCombatLockdown() then self.bindingConflictRefreshPending = true; return end
     local function Run()
         BindCards.bindingConflictTimer = nil
         BindCards.bindingConflictFallbackToken = nil
