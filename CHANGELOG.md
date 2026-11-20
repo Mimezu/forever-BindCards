@@ -1,3 +1,10 @@
+# 0.4.49
+
+- Fix a `/bc rebind` (or edit) queued in combat being dropped when a zone or PvP change followed.
+- Combat: the binding conflict check waits for combat end (was rerun on every unit-frame hover).
+- Less work: hover attributes written only when changed; no gamepad pass on item pick-up or slot changes without controller shortcuts; one player context per compile; no per-frame table while dragging.
+- Cleanup: unused gamepad stubs and legacy events removed.
+
 # 0.4.48
 
 - Three retro appearances (Menu > Display): **Mac Mono** (1-bit black and white, pinstriped title bar, rounded buttons, ringed default button, inverted selection, drop shadows), **MS-DOS** (CGA blue panels, grey menu bar, double-line boxes, cyan selection, solid text-mode shadows) and **Win 3.1** (white windows, navy title bar, bevelled #C0C0C0 buttons, sunken slots, framed dialogs).
