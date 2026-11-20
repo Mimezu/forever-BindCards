@@ -485,7 +485,6 @@ function BindCards:DeleteProfile(profileId)
     if self.db.settings.defaultProfileId == profileId then self.db.settings.defaultProfileId = fallback and fallback.id end
     self:Fire("PROFILES_CHANGED", self.db.selectedProfileId)
     self:Fire("PROFILE_SELECTED", self.db.selectedProfileId, removed.binderId)
-    self:Fire("ProfileChanged", self.db.selectedProfileId, removed.binderId)
     self:RequestRecompile("profile-deleted")
     return true
 end
@@ -525,7 +524,6 @@ function BindCards:SelectProfile(profileId)
     end
     self.db.selectedProfileId = profileId
     self:Fire("PROFILE_SELECTED", profileId, profile.binderId)
-    self:Fire("ProfileChanged", profileId, profile.binderId)
     if profile.binderId == self.GENERAL_BINDER_ID or classFile == currentClass then
         self:RequestRecompile("profile-selected")
     end
@@ -633,9 +631,7 @@ function BindCards:RestoreUndoSnapshot(snapshot)
     end
     self:Fire("PROFILES_CHANGED", self.db.selectedProfileId)
     self:Fire("PROFILE_SELECTED", self.db.selectedProfileId)
-    self:Fire("ProfileChanged", self.db.selectedProfileId)
     self:Fire("DATA_CHANGED", self.db.selectedProfileId)
-    self:Fire("DataChanged", self.db.selectedProfileId)
     self:RequestRecompile("undo")
     return true
 end
@@ -645,7 +641,6 @@ function BindCards:TouchProfile(profile, changeKind)
     if profile then profile.updatedAt = time and time() or 0 end
     if self.templateBatch then return end
     self:Fire("DATA_CHANGED", profile and profile.id, changeKind)
-    self:Fire("DataChanged", profile and profile.id, changeKind)
 end
 
 function BindCards:FindCard(cardId, ...)
