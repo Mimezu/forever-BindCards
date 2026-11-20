@@ -9,7 +9,7 @@ InCombatLockdown = function() return false end
 IsInInstance = function() return false, 'none' end
 UnitIsPVP = function() return false end
 C_Timer = { After = function() end }
-for _, file in ipairs({ 'Core', 'Conditions', 'Bindings', 'Serialization' }) do
+for _, file in ipairs({ 'Core', 'Conditions', 'Bindings', 'GamepadBindings', 'Serialization' }) do
     assert(loadfile(root .. '/' .. file .. '.lua'))('BindCards', addon)
 end
 addon.RequestRecompile = function() end

@@ -202,16 +202,6 @@ function BindCards:FormatGamepadShortcut(key)
     if self:IsGamepadShortcut(key) then return key end
 end
 
-function BindCards:GetGamepadBindingCapabilities()
-    -- A companion state feed is informational: it cannot authorize protected
-    -- rebinding, synchronise the native action icons, or yield to UI contexts.
-    return { capture = true, overrides = false, scope = "page", pages = 3, status = "saved-not-active",
-        reason = "Gamepad shortcuts are saved, not active. Blizzard's bindings remain in use." }
-end
-
-function BindCards:GetGamepadBindingStatus(key)
-    if self:IsGamepadShortcut(key) then return self:GetGamepadBindingCapabilities().reason end
-end
 local NAMED_KEYS = {
     SPACE = true, TAB = true, ENTER = true, ESCAPE = true, BACKSPACE = true, DELETE = true,
     INSERT = true, HOME = true, END = true, PAGEUP = true, PAGEDOWN = true,
