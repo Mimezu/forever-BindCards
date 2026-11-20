@@ -310,5 +310,10 @@ for _, event in ipairs({ 'PLAYER_LOGIN', 'PLAYER_ENTERING_WORLD', 'PLAYER_REGEN_
 end
 events:SetScript('OnEvent', function(_, event)
     if event == 'PLAYER_LOGIN' or event == 'PLAYER_ENTERING_WORLD' then ready = true end
+    if (event == 'ACTIONBAR_SLOT_CHANGED' or event == 'CURSOR_CHANGED') and not BC.gamepadPending then
+        -- Nothing compiled and nothing owned: a slot or cursor change has no work.
+        local compiled, journal = BC.lastCompiledGamepadBindings, Journal()
+        if compiled and not next(compiled) and journal and not next(journal.slots) then return end
+    end
     Queue()
 end)
