@@ -578,10 +578,10 @@ function BindCards:ConfigureSecureButton(tile, targetButton, prepared)
     return button, token
 end
 
-local function GetBindingSources(addon, profile)
+local function GetBindingSources(addon, profile, context)
     if profile and not profile.isComposite then return { profile } end
     -- Later sources win a shared key: General < class < character.
-    local general, class, character = addon:GetSelectedProfileSets()
+    local general, class, character = addon:GetSelectedProfileSets(context)
     local sources = {}
     if general then sources[#sources + 1] = general end
     if class then sources[#sources + 1] = class end
@@ -655,12 +655,13 @@ local function CompileBindingsForContext(addon, sources, context, gamepad)
 end
 
 function BindCards:CompileCurrentBindings(profile)
-    local sources, context = GetBindingSources(self, profile), self:GetPlayerContext()
-    return CompileBindingsForContext(self, sources, context)
+    local context = self:GetPlayerContext()
+    return CompileBindingsForContext(self, GetBindingSources(self, profile, context), context)
 end
 
 function BindCards:CompileCurrentGamepadBindings(profile)
-    return CompileBindingsForContext(self, GetBindingSources(self, profile), self:GetPlayerContext(), true)
+    local context = self:GetPlayerContext()
+    return CompileBindingsForContext(self, GetBindingSources(self, profile, context), context, true)
 end
 
 local function BindingIdentity(tile)
@@ -668,7 +669,8 @@ local function BindingIdentity(tile)
 end
 
 function BindCards:CompileBindings(profile)
-    local sources, context = GetBindingSources(self, profile), self:GetPlayerContext()
+    local context = self:GetPlayerContext()
+    local sources = GetBindingSources(self, profile, context)
     local winners, cards, states, hoverWinners = CompileBindingsForContext(self, sources, context)
     -- Mouseover bindings per form state. Form changes do not recompile, so
     -- HoverCast switches between these in its secure snippets, following the
@@ -695,7 +697,7 @@ function BindCards:CompileBindings(profile)
         hoverStates.byState[option.id] = formHoverWinners
         if context.form == option.id then hoverStates.current = option.id end
     end
-    if #options > 0 then hoverStates.driver = self:GetConditionalBindingStateDriver(context.class) end
+    hoverStates.driver = self:GetConditionalBindingStateDriver(context.class)
     self.lastCompiledHoverBindings = hoverStates.byState[hoverStates.current]
 
     local allKeys = {}
@@ -721,8 +723,7 @@ function BindCards:CompileBindings(profile)
             end
         end
     end
-    return winners, cards, states, routes,
-        self:GetConditionalBindingStateDriver(context.class), allStates
+    return winners, cards, states, routes, hoverStates.driver, allStates
 end
 
 local function InstallOverridePlan(plan)
@@ -894,7 +895,6 @@ function BindCards:ApplyBindings(reason)
     -- Native attribute drivers do not compile snippets and work in combat.
     local useNativeFormDrivers = type(RegisterAttributeDriver) == "function" and
         type(UnregisterAttributeDriver) == "function"
-    local profile = self:GetSelectedProfile()
     local settings = self.db.settings or {}
     local preparedByTile, preparedByToken, winnerTargets, preparedFormRoutes = {}, {}, {}, {}
     local winnerCount = 0
@@ -947,6 +947,7 @@ function BindCards:ApplyBindings(reason)
     local migration = {}
     local completeLegacyMigration = settings.legacyBindingsRestored ~= true
     if settings.legacyBindingsRestored ~= true then
+        local profile = self:GetSelectedProfile()
         local knownKeys = {}
         for key in pairs(self.directBindingKeys) do knownKeys[key] = true; completeLegacyMigration = true end
         for key in pairs(settings.bindingRestore) do knownKeys[key] = true; completeLegacyMigration = true end
