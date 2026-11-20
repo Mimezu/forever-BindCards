@@ -79,6 +79,7 @@ SetOverrideBindingClick = function(...) assert(not combat); return oldClick(...)
 GetNumShapeshiftForms = function() return 2 end
 GetShapeshiftFormInfo = function(index) return 1, form == index, true, index == 1 and 5487 or 768 end
 GetShapeshiftForm = function() return form end
+local RealRequestRecompile = addon.RequestRecompile
 addon.RequestRecompile = function() end
 addon:InitializeDatabase()
 local profile = assert(addon:CreateProfile("Forms", nil, "class:DRUID"))
@@ -168,5 +169,9 @@ clears = 0
 addon.bindingsPending = "queued-in-combat"
 assert(addon:ApplyBindings("combat-ended"))
 assert(clears > 0 and not addon.bindingsPending, "Pending work always reinstalls")
+combat = true; RealRequestRecompile(addon, "slash"); RealRequestRecompile(addon, "ZONE_CHANGED"); combat = false
+clears = 0
+addon:ApplyPendingBindings()
+assert(clears > 0, "queued rebind survives a later ambient reason")
 ClearOverrideBindings = countedClear
 print("PASS: native form drivers switch actions in combat, both key edges, exact ranks, macro payloads, targets, inactive keys, rollback, removal and unchanged-recompile skipping")

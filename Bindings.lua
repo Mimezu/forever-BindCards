@@ -841,6 +841,13 @@ local AMBIENT_RECOMPILE_REASONS = {
     UPDATE_SHAPESHIFT_FORMS = true,
 }
 
+-- A queued strong reason (an edit, a rebind, a lost override) must survive
+-- later ambient reasons, or the unchanged-signature shortcut skips the repair.
+local function KeepStrongReason(current, new)
+    if current ~= nil and not AMBIENT_RECOMPILE_REASONS[current] then return current end
+    return new
+end
+
 local function SpecSignature(spec)
     if not spec then return "-" end
     return table.concat({
@@ -875,7 +882,7 @@ end
 function BindCards:ApplyBindings(reason)
     if not self.db then return false end
     if InCombatLockdown() then
-        self.bindingsPending = reason or true
+        self.bindingsPending = KeepStrongReason(self.bindingsPending, reason or true)
         self:Fire("BINDINGS_QUEUED", reason)
         return false
     end
@@ -1195,7 +1202,7 @@ function BindCards:RequestRecompile(reason, immediate)
         if self.recompileTimer and self.recompileTimer.Cancel then self.recompileTimer:Cancel() end
         self.recompileTimer, self.recompileTimerFallback, self.recompileFallbackToken = nil, nil, nil
         self.recompileQueued = nil
-        self.bindingsPending = reason or true
+        self.bindingsPending = KeepStrongReason(self.bindingsPending, reason or true)
         self:Fire("BINDINGS_QUEUED", reason)
         return
     end
@@ -1206,7 +1213,7 @@ function BindCards:RequestRecompile(reason, immediate)
         self.recompileQueued, self.recompileReason = nil, nil
         return self:ApplyBindings(reason)
     end
-    self.recompileReason = reason or self.recompileReason
+    self.recompileReason = KeepStrongReason(self.recompileReason, reason) or self.recompileReason
     self.recompileGeneration = (self.recompileGeneration or 0) + 1
     self.recompileQueued = true
     local function Run()
