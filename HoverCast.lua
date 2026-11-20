@@ -418,7 +418,8 @@ function BindCards:StampHoverFrame(frame, attributes)
                 local original = frame:GetAttribute(name)
                 backup[name] = original == nil and NONE or original
             end
-            if value == CLEAR then frame:SetAttribute(name, nil) else frame:SetAttribute(name, value) end
+            local desired = value ~= CLEAR and value or nil
+            if frame:GetAttribute(name) ~= desired then frame:SetAttribute(name, desired) end
         end
     end)
     return ok
